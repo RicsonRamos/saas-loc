@@ -1,0 +1,54 @@
+services:
+  # === PostgreSQL ===
+  postgres:
+    image: postgres:16-alpine
+    container_name: locadora-postgres
+    environment:
+      POSTGRES_DB: locadora
+      POSTGRES_USER: locadora_user
+      POSTGRES_PASSWORD: changeme
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U locadora_user -d locadora"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # === Backend (Spring Boot) ===
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: locadora-backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: locadora
+      DB_USER: locadora_user
+      DB_PASSWORD: changeme
+      JWT_SECRET: dev-secret-key-must-be-at-least-256-bits-long-for-hmac-sha256-algorithm
+      JWT_ACCESS_EXPIRATION_MS: 900000
+      JWT_REFRESH_EXPIRATION_MS: 604800000
+      SPRING_PROFILES_ACTIVE: dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # === Frontend (React) ===
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: locadora-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://localhost:8080/api/v1
+
+volumes:
+  pgdata:
