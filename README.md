@@ -626,6 +626,12 @@ curl http://localhost:8080/actuator/health
 
 - [ ] `JWT_SECRET` — gerar chave forte de 256+ bits
 - [ ] `DB_PASSWORD` — senha forte e única
+- [x] **EPIC 2:** Cadastro de Clientes
+- [x] **EPIC 3:** Cadastro de Veículos
+- [x] **EPIC 4:** Contratos de Locação
+- [x] **EPIC 5:** Financeiro Básico
+- [x] **EPIC 6:** Manutenção
+- [ ] **EPIC 7:** Dashboards
 - [ ] HTTPS configurado (NGINX + Certbot)
 - [ ] CORS restrito ao domínio real
 - [ ] Backup automático do banco
@@ -645,8 +651,8 @@ O desenvolvimento segue a ordem definida no [backlog técnico](docs/backlog-tecn
 | 2 | Cadastro de Clientes | ✅ Concluído | Clientes, validação, persistência |
 | 3 | Frota (Veículos) | ✅ Concluído | CRUD veículos, status, documentação |
 | 4 | Contratos | ✅ Concluído | Locação, km, devolução, danos |
-| 5 | Financeiro | ⏳ | Receitas, despesas, fluxo de caixa |
-| 6 | Manutenção | ⏳ | Preventiva/corretiva, custos |
+| 5 | Financeiro | ✅ Concluído | Receitas, despesas, fluxo de caixa |
+| 6 | Manutenção | ✅ Concluído | Preventiva/corretiva, custos |
 | 7 | Dashboard | ⏳ | KPIs, indicadores, gráficos |
 | 8 | Relatórios | ⏳ | PDF, Excel, filtros |
 | 9 | Segurança Reforçada | ⏳ | Auditoria, rate limiting, hardening |
