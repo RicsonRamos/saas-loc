@@ -1,7 +1,6 @@
 package com.locadora.relatorio.service;
 
 import com.lowagie.text.Document;
-import com.lowagie.text.DocumentException;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
 import com.lowagie.text.Paragraph;
@@ -11,7 +10,6 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.locadora.financeiro.entity.LancamentoFinanceiro;
 import com.locadora.financeiro.repository.LancamentoFinanceiroRepository;
-import com.locadora.shared.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -19,10 +17,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.UUID;
 
 /**
- * Serviço responsável por compilar dados do banco em arquivos físicos (CSV, PDF).
+ * Serviço de Relatórios — Single-Tenant.
+ * Compila dados do banco em arquivos físicos (CSV, PDF).
  */
 @Service
 public class RelatorioService {
@@ -33,12 +31,8 @@ public class RelatorioService {
         this.lancamentoRepository = lancamentoRepository;
     }
 
-    /**
-     * Gera um arquivo CSV delimitado por ponto-e-vírgula contendo o extrato do mês.
-     */
     public byte[] gerarCsvFluxoCaixa(int ano, int mes) {
-        UUID tenantId = TenantContext.requireTenantId();
-        List<LancamentoFinanceiro> lancamentos = buscarLancamentos(tenantId, ano, mes);
+        List<LancamentoFinanceiro> lancamentos = buscarLancamentos(ano, mes);
 
         StringBuilder csv = new StringBuilder();
         csv.append("Data;Tipo;Categoria;Descricao;Valor\n");
@@ -49,38 +43,31 @@ public class RelatorioService {
                     data,
                     l.getTipo().name(),
                     l.getCategoria().name(),
-                    l.getDescricao().replace(";", ","), // Evita quebrar colunas
+                    l.getDescricao().replace(";", ","),
                     l.getValor()
             ));
         }
         return csv.toString().getBytes();
     }
 
-    /**
-     * Gera um documento PDF profissional com o extrato financeiro.
-     */
     public byte[] gerarPdfFluxoCaixa(int ano, int mes) {
-        UUID tenantId = TenantContext.requireTenantId();
-        List<LancamentoFinanceiro> lancamentos = buscarLancamentos(tenantId, ano, mes);
+        List<LancamentoFinanceiro> lancamentos = buscarLancamentos(ano, mes);
 
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Document document = new Document();
             PdfWriter.getInstance(document, out);
             document.open();
 
-            // Título
             Font fontTitulo = new Font(Font.HELVETICA, 18, Font.BOLD);
             Paragraph titulo = new Paragraph("Extrato Financeiro - " + mes + "/" + ano, fontTitulo);
             titulo.setAlignment(Element.ALIGN_CENTER);
             document.add(titulo);
-            document.add(new Paragraph(" ")); // Espaço em branco
+            document.add(new Paragraph(" "));
 
-            // Tabela
             PdfPTable table = new PdfPTable(5);
             table.setWidthPercentage(100);
             table.setWidths(new float[]{1.5f, 1.5f, 2f, 3f, 1.5f});
 
-            // Cabeçalho da Tabela
             Font fontHeader = new Font(Font.HELVETICA, 12, Font.BOLD);
             adicionarCelula(table, "Data", fontHeader);
             adicionarCelula(table, "Tipo", fontHeader);
@@ -91,10 +78,10 @@ public class RelatorioService {
             BigDecimal saldo = BigDecimal.ZERO;
 
             for (LancamentoFinanceiro l : lancamentos) {
-                String data = l.getDataPagamento() != null 
-                    ? l.getDataPagamento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) 
+                String data = l.getDataPagamento() != null
+                    ? l.getDataPagamento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                     : "-";
-                    
+
                 table.addCell(data);
                 table.addCell(l.getTipo().name());
                 table.addCell(l.getCategoria().name());
@@ -110,8 +97,7 @@ public class RelatorioService {
 
             document.add(table);
             document.add(new Paragraph(" "));
-            
-            // Rodapé com o Saldo
+
             Font fontSaldo = new Font(Font.HELVETICA, 14, Font.BOLD);
             Paragraph pSaldo = new Paragraph("Saldo Líquido do Período: R$ " + saldo, fontSaldo);
             pSaldo.setAlignment(Element.ALIGN_RIGHT);
@@ -130,9 +116,9 @@ public class RelatorioService {
         table.addCell(cell);
     }
 
-    private List<LancamentoFinanceiro> buscarLancamentos(UUID tenantId, int ano, int mes) {
+    private List<LancamentoFinanceiro> buscarLancamentos(int ano, int mes) {
         LocalDate inicio = LocalDate.of(ano, mes, 1);
         LocalDate fim = inicio.withDayOfMonth(inicio.lengthOfMonth());
-        return lancamentoRepository.findByTenantIdAndDataPagamentoBetweenAndDeletedAtIsNullOrderByDataPagamentoDesc(tenantId, inicio, fim);
+        return lancamentoRepository.findByDataPagamentoBetweenAndDeletedAtIsNullOrderByDataPagamentoDesc(inicio, fim);
     }
 }

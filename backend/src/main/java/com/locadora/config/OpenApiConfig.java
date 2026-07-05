@@ -19,8 +19,8 @@ public class OpenApiConfig {
     public OpenAPI openAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Locadora SaaS API")
-                        .description("API REST para gestão de locadoras de veículos - Multi-tenant SaaS")
+                        .title("Locadora ERP API")
+                        .description("API REST para gestão de locadora de veículos - Single-Tenant")
                         .version("1.0.0"))
                 .addSecurityItem(new SecurityRequirement().addList("Bearer"))
                 .components(new Components()

@@ -1,6 +1,5 @@
 package com.locadora.security.jwt;
 
-import com.locadora.shared.tenant.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,11 +17,11 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.UUID;
 
 /**
- * Filtro JWT que extrai o token do header Authorization,
- * valida e configura o SecurityContext + TenantContext.
+ * Filtro JWT — Single-Tenant.
+ * Extrai o token do header Authorization, valida e configura o SecurityContext.
+ * Não gerencia mais TenantContext.
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -54,11 +53,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
 
                 String email = jwtTokenProvider.getEmailFromToken(jwt);
-                UUID tenantId = jwtTokenProvider.getTenantIdFromToken(jwt);
-
-                // Definir tenant no contexto - conforme 07-segurança.md
-                TenantContext.setTenantId(tenantId);
-
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
                 UsernamePasswordAuthenticationToken authentication =
@@ -69,10 +63,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         } catch (Exception e) {
             log.error("Erro ao processar autenticação JWT: {}", e.getMessage());
-        } finally {
-            filterChain.doFilter(request, response);
-            TenantContext.clear();
         }
+
+        filterChain.doFilter(request, response);
     }
 
     private String extractToken(HttpServletRequest request) {

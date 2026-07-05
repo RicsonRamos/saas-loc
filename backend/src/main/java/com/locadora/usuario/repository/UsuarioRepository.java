@@ -10,9 +10,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Repository de Usuário.
- * Conforme 08-guard-rails.md: apenas responsabilidade de persistência.
- * Toda consulta filtra por tenant_id conforme multi-tenant rules.
+ * Repository de Usuário — Single-Tenant.
  */
 @Repository
 public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
@@ -21,7 +19,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
 
     boolean existsByEmail(String email);
 
-    Page<Usuario> findByTenantIdAndDeletedAtIsNull(UUID tenantId, Pageable pageable);
+    Page<Usuario> findByDeletedAtIsNull(Pageable pageable);
 
-    Optional<Usuario> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
+    Optional<Usuario> findByIdAndDeletedAtIsNull(UUID id);
 }

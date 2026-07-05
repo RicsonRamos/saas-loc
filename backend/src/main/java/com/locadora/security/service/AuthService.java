@@ -1,12 +1,12 @@
 package com.locadora.security.service;
 
+import com.locadora.auth.service.LoginAttemptService;
 import com.locadora.common.exception.BusinessException;
 import com.locadora.common.exception.UnauthorizedException;
 import com.locadora.security.dto.LoginRequest;
 import com.locadora.security.dto.RefreshTokenRequest;
 import com.locadora.security.dto.TokenResponse;
 import com.locadora.security.jwt.JwtTokenProvider;
-import com.locadora.auth.service.LoginAttemptService;
 import com.locadora.usuario.entity.Usuario;
 import com.locadora.usuario.repository.UsuarioRepository;
 import org.slf4j.Logger;
@@ -18,9 +18,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 /**
- * Serviço de autenticação.
- * Conforme 07-segurança.md: JWT Stateless, BCrypt, Access + Refresh Token.
+ * Serviço de autenticação — Single-Tenant.
+ * JWT Stateless, BCrypt, Access + Refresh Token.
+ * Não gerencia mais tenantId.
  */
 @Service
 public class AuthService {
@@ -51,7 +54,7 @@ public class AuthService {
         }
 
         try {
-            Authentication authentication = authenticationManager.authenticate(
+            authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getSenha())
             );
 
@@ -62,12 +65,9 @@ public class AuthService {
                 throw new BusinessException("Usuário inativo");
             }
 
-            String accessToken = jwtTokenProvider.generateAccessToken(
-                    usuario.getId(), usuario.getTenantId(), usuario.getEmail());
-            String refreshToken = jwtTokenProvider.generateRefreshToken(
-                    usuario.getId(), usuario.getTenantId(), usuario.getEmail());
+            String accessToken = jwtTokenProvider.generateAccessToken(usuario.getId(), usuario.getEmail());
+            String refreshToken = jwtTokenProvider.generateRefreshToken(usuario.getId(), usuario.getEmail());
 
-            // Nunca logar tokens - conforme 07-segurança.md
             log.info("Login realizado com sucesso para usuário: {}", usuario.getEmail());
             loginAttemptService.loginSucceeded(request.getEmail());
 
@@ -101,10 +101,8 @@ public class AuthService {
         Usuario usuario = usuarioRepository.findByEmailAndDeletedAtIsNull(email)
                 .orElseThrow(() -> new UnauthorizedException("Usuário não encontrado"));
 
-        String newAccessToken = jwtTokenProvider.generateAccessToken(
-                usuario.getId(), usuario.getTenantId(), usuario.getEmail());
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(
-                usuario.getId(), usuario.getTenantId(), usuario.getEmail());
+        String newAccessToken = jwtTokenProvider.generateAccessToken(usuario.getId(), usuario.getEmail());
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(usuario.getId(), usuario.getEmail());
 
         return TokenResponse.builder()
                 .accessToken(newAccessToken)

@@ -3,7 +3,6 @@ package com.locadora.usuario.service;
 import com.locadora.common.dto.PagedResponse;
 import com.locadora.common.exception.BusinessException;
 import com.locadora.common.exception.ResourceNotFoundException;
-import com.locadora.shared.tenant.TenantContext;
 import com.locadora.usuario.dto.UsuarioRequest;
 import com.locadora.usuario.dto.UsuarioResponse;
 import com.locadora.usuario.dto.UsuarioUpdateRequest;
@@ -22,9 +21,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Serviço de Usuários.
- * Conforme 08-guard-rails.md: toda regra de negócio pertence aos Services.
- * Garante o isolamento de tenant em todas as operações.
+ * Serviço de Usuários — Single-Tenant.
  */
 @Service
 public class UsuarioService {
@@ -35,8 +32,8 @@ public class UsuarioService {
     private final UsuarioMapper usuarioMapper;
     private final PasswordEncoder passwordEncoder;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, 
-                          UsuarioMapper usuarioMapper, 
+    public UsuarioService(UsuarioRepository usuarioRepository,
+                          UsuarioMapper usuarioMapper,
                           PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
         this.usuarioMapper = usuarioMapper;
@@ -45,27 +42,22 @@ public class UsuarioService {
 
     @Transactional
     public UsuarioResponse criar(UsuarioRequest request) {
-        UUID tenantId = TenantContext.requireTenantId();
-
         if (usuarioRepository.existsByEmail(request.getEmail())) {
             throw new BusinessException("E-mail já cadastrado");
         }
 
         Usuario usuario = usuarioMapper.toEntity(request);
-        usuario.setTenantId(tenantId);
         usuario.setSenha(passwordEncoder.encode(request.getSenha()));
 
         usuario = usuarioRepository.save(usuario);
-        log.info("Usuário criado com sucesso: {} (Tenant: {})", usuario.getEmail(), tenantId);
+        log.info("Usuário criado com sucesso: {}", usuario.getEmail());
 
         return usuarioMapper.toResponse(usuario);
     }
 
     @Transactional(readOnly = true)
     public PagedResponse<UsuarioResponse> listar(Pageable pageable) {
-        UUID tenantId = TenantContext.requireTenantId();
-        
-        Page<Usuario> page = usuarioRepository.findByTenantIdAndDeletedAtIsNull(tenantId, pageable);
+        Page<Usuario> page = usuarioRepository.findByDeletedAtIsNull(pageable);
         List<UsuarioResponse> data = page.getContent().stream()
                 .map(usuarioMapper::toResponse)
                 .toList();
@@ -81,15 +73,14 @@ public class UsuarioService {
     @Transactional
     public UsuarioResponse atualizar(UUID id, UsuarioUpdateRequest request) {
         Usuario usuario = obterUsuarioPorId(id);
-
         usuarioMapper.updateEntity(request, usuario);
-        
+
         if (request.getAtivo() != null) {
             usuario.setAtivo(request.getAtivo());
         }
 
         usuario = usuarioRepository.save(usuario);
-        log.info("Usuário atualizado: {} (Tenant: {})", usuario.getEmail(), usuario.getTenantId());
+        log.info("Usuário atualizado: {}", usuario.getEmail());
 
         return usuarioMapper.toResponse(usuario);
     }
@@ -98,23 +89,18 @@ public class UsuarioService {
     public void excluir(UUID id, UUID currentUserId) {
         Usuario usuario = obterUsuarioPorId(id);
 
-        // Previne que o usuário exclua a si mesmo
         if (usuario.getId().equals(currentUserId)) {
             throw new BusinessException("Não é possível excluir o próprio usuário");
         }
 
         usuario.softDelete(currentUserId);
         usuarioRepository.save(usuario);
-        
-        log.info("Usuário excluído (soft delete): {} (Tenant: {})", usuario.getEmail(), usuario.getTenantId());
+
+        log.info("Usuário excluído (soft delete): {}", usuario.getEmail());
     }
 
-    /**
-     * Método auxiliar para buscar garantindo o isolamento do tenant.
-     */
     private Usuario obterUsuarioPorId(UUID id) {
-        UUID tenantId = TenantContext.requireTenantId();
-        return usuarioRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
+        return usuarioRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário", "id", id));
     }
 }

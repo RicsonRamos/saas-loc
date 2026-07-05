@@ -15,11 +15,9 @@ import java.util.Date;
 import java.util.UUID;
 
 /**
- * Provedor JWT conforme 07-segurança.md:
- * - Access Token (curta duração)
- * - Refresh Token (longa duração)
- * - Tokens assinados
- * - Stateless
+ * Provedor JWT — Single-Tenant.
+ * Gera Access e Refresh Tokens assinados com HMAC.
+ * Não contém mais tenant_id nas claims.
  */
 @Component
 public class JwtTokenProvider {
@@ -39,21 +37,20 @@ public class JwtTokenProvider {
         this.refreshExpirationMs = refreshExpirationMs;
     }
 
-    public String generateAccessToken(UUID userId, UUID tenantId, String email) {
-        return buildToken(userId, tenantId, email, accessExpirationMs, "ACCESS");
+    public String generateAccessToken(UUID userId, String email) {
+        return buildToken(userId, email, accessExpirationMs, "ACCESS");
     }
 
-    public String generateRefreshToken(UUID userId, UUID tenantId, String email) {
-        return buildToken(userId, tenantId, email, refreshExpirationMs, "REFRESH");
+    public String generateRefreshToken(UUID userId, String email) {
+        return buildToken(userId, email, refreshExpirationMs, "REFRESH");
     }
 
-    private String buildToken(UUID userId, UUID tenantId, String email, long expirationMs, String type) {
+    private String buildToken(UUID userId, String email, long expirationMs, String type) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
                 .subject(userId.toString())
-                .claim("tenant_id", tenantId.toString())
                 .claim("email", email)
                 .claim("type", type)
                 .issuedAt(now)
@@ -65,11 +62,6 @@ public class JwtTokenProvider {
     public UUID getUserIdFromToken(String token) {
         Claims claims = parseClaims(token);
         return UUID.fromString(claims.getSubject());
-    }
-
-    public UUID getTenantIdFromToken(String token) {
-        Claims claims = parseClaims(token);
-        return UUID.fromString(claims.get("tenant_id", String.class));
     }
 
     public String getEmailFromToken(String token) {
@@ -87,7 +79,6 @@ public class JwtTokenProvider {
             parseClaims(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
-            // Nunca logar o token em si - conforme 07-segurança.md
             log.warn("Token JWT inválido: {}", e.getMessage());
             return false;
         }

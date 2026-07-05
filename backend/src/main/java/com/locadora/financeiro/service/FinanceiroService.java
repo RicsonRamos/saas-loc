@@ -1,6 +1,7 @@
 package com.locadora.financeiro.service;
 
 import com.locadora.common.dto.PagedResponse;
+import com.locadora.common.exception.BusinessException;
 import com.locadora.common.exception.ResourceNotFoundException;
 import com.locadora.contrato.repository.ContratoRepository;
 import com.locadora.financeiro.dto.FluxoCaixaResponse;
@@ -12,7 +13,6 @@ import com.locadora.financeiro.entity.TipoTransacao;
 import com.locadora.financeiro.mapper.LancamentoMapper;
 import com.locadora.financeiro.repository.LancamentoFinanceiroRepository;
 import com.locadora.frota.repository.VeiculoRepository;
-import com.locadora.shared.tenant.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Serviço responsável por controlar o fluxo de caixa (entradas e saídas).
+ * Serviço Financeiro — Single-Tenant.
  */
 @Service
 public class FinanceiroService {
@@ -48,42 +48,29 @@ public class FinanceiroService {
         this.contratoRepository = contratoRepository;
     }
 
-    /**
-     * Cria uma nova transação, seja manual ou acionada por outro módulo.
-     */
     @Transactional
-    public LancamentoResponse criar(LancamentoRequest request) {
-        UUID tenantId = TenantContext.requireTenantId();
-
+    public LancamentoResponse criarLancamento(LancamentoRequest request) {
         LancamentoFinanceiro lancamento = lancamentoMapper.toEntity(request);
-        lancamento.setTenantId(tenantId);
 
-        // Vínculos Opcionais (se passados, devemos garantir que pertencem ao tenant)
         if (request.getVeiculoId() != null) {
-            lancamento.setVeiculo(veiculoRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getVeiculoId(), tenantId)
+            lancamento.setVeiculo(veiculoRepository.findByIdAndDeletedAtIsNull(request.getVeiculoId())
                     .orElseThrow(() -> new ResourceNotFoundException("Veículo", "id", request.getVeiculoId())));
         }
 
         if (request.getContratoId() != null) {
-            lancamento.setContrato(contratoRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getContratoId(), tenantId)
+            lancamento.setContrato(contratoRepository.findByIdAndDeletedAtIsNull(request.getContratoId())
                     .orElseThrow(() -> new ResourceNotFoundException("Contrato", "id", request.getContratoId())));
         }
 
         lancamento = lancamentoRepository.save(lancamento);
-        log.info("Lançamento financeiro {} ({}) registrado. (Tenant: {})", 
-                 lancamento.getTipo(), lancamento.getValor(), tenantId);
+        log.info("Lançamento financeiro {} ({}) registrado.", lancamento.getTipo(), lancamento.getValor());
 
         return lancamentoMapper.toResponse(lancamento);
     }
 
-    /**
-     * Lista lançamentos paginados para o extrato da locadora.
-     */
     @Transactional(readOnly = true)
     public PagedResponse<LancamentoResponse> listar(Pageable pageable) {
-        UUID tenantId = TenantContext.requireTenantId();
-        
-        Page<LancamentoFinanceiro> page = lancamentoRepository.findByTenantIdAndDeletedAtIsNull(tenantId, pageable);
+        Page<LancamentoFinanceiro> page = lancamentoRepository.findByDeletedAtIsNull(pageable);
         List<LancamentoResponse> data = page.getContent().stream()
                 .map(lancamentoMapper::toResponse)
                 .toList();
@@ -91,23 +78,31 @@ public class FinanceiroService {
         return PagedResponse.of(data, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
     }
 
-    /**
-     * Apura o fluxo de caixa de um determinado mês e ano usando agregação otimizada no banco.
-     */
+    @Transactional
+    public void pagarLancamento(UUID id) {
+        LancamentoFinanceiro lancamento = lancamentoRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Lançamento", "id", id));
+
+        if (lancamento.getStatus() == StatusPagamento.PAGO) {
+            throw new BusinessException("Lançamento já está pago.");
+        }
+
+        lancamento.setStatus(StatusPagamento.PAGO);
+        lancamento.setDataPagamento(LocalDate.now());
+        lancamentoRepository.save(lancamento);
+    }
+
     @Transactional(readOnly = true)
     public FluxoCaixaResponse obterFluxoMensal(int ano, int mes) {
-        UUID tenantId = TenantContext.requireTenantId();
-
         LocalDate inicio = LocalDate.of(ano, mes, 1);
         LocalDate fim = inicio.withDayOfMonth(inicio.lengthOfMonth());
 
         BigDecimal receitas = lancamentoRepository.sumValorByTipoAndStatusAndPeriodo(
-                tenantId, TipoTransacao.RECEITA, StatusPagamento.PAGO, inicio, fim);
-        
-        BigDecimal despesas = lancamentoRepository.sumValorByTipoAndStatusAndPeriodo(
-                tenantId, TipoTransacao.DESPESA, StatusPagamento.PAGO, inicio, fim);
+                TipoTransacao.RECEITA, StatusPagamento.PAGO, inicio, fim);
 
-        // Trata nulos gerados pelo SUM do banco vazio
+        BigDecimal despesas = lancamentoRepository.sumValorByTipoAndStatusAndPeriodo(
+                TipoTransacao.DESPESA, StatusPagamento.PAGO, inicio, fim);
+
         receitas = (receitas == null) ? BigDecimal.ZERO : receitas;
         despesas = (despesas == null) ? BigDecimal.ZERO : despesas;
         BigDecimal saldoLiquido = receitas.subtract(despesas);

@@ -27,7 +27,6 @@ public interface ContratoMapper {
      * as quais devem ser validadas e anexadas pelo Service posteriormente.
      */
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "tenantId", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "kmInicial", ignore = true)
     @Mapping(target = "kmFinal", ignore = true)

@@ -13,10 +13,8 @@ public interface VeiculoMapper {
     VeiculoResponse toResponse(Veiculo veiculo);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "tenantId", ignore = true)
     Veiculo toEntity(VeiculoRequest request);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "tenantId", ignore = true)
     void updateEntity(VeiculoRequest request, @MappingTarget Veiculo veiculo);
 }

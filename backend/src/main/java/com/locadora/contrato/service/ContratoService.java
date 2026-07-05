@@ -20,7 +20,6 @@ import com.locadora.financeiro.service.FinanceiroService;
 import com.locadora.frota.entity.StatusVeiculo;
 import com.locadora.frota.entity.Veiculo;
 import com.locadora.frota.repository.VeiculoRepository;
-import com.locadora.shared.tenant.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -34,8 +33,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Serviço responsável por toda a lógica de negócio de Contratos.
- * Orquestra o ciclo de vida da locação, acerto de quilometragem e o status do veículo na frota.
+ * Serviço de Contratos — Single-Tenant.
+ * Orquestra o ciclo de vida da locação, quilometragem e status do veículo.
  */
 @Service
 public class ContratoService {
@@ -48,9 +47,9 @@ public class ContratoService {
     private final VeiculoRepository veiculoRepository;
     private final FinanceiroService financeiroService;
 
-    public ContratoService(ContratoRepository contratoRepository, 
-                           ContratoMapper contratoMapper, 
-                           ClienteRepository clienteRepository, 
+    public ContratoService(ContratoRepository contratoRepository,
+                           ContratoMapper contratoMapper,
+                           ClienteRepository clienteRepository,
                            VeiculoRepository veiculoRepository,
                            FinanceiroService financeiroService) {
         this.contratoRepository = contratoRepository;
@@ -60,63 +59,40 @@ public class ContratoService {
         this.financeiroService = financeiroService;
     }
 
-    /**
-     * Cria um novo contrato e efetiva a locação do veículo.
-     *
-     * @param request Payload com os dados estipulados para a locação.
-     * @return O contrato já persistido e mapeado.
-     */
     @Transactional
-    public ContratoResponse criar(ContratoRequest request) {
-        UUID tenantId = TenantContext.requireTenantId();
-
-        // 1. Validar e Buscar Entidades (Cliente e Veículo)
-        Cliente cliente = clienteRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getClienteId(), tenantId)
+    public ContratoResponse abrirContrato(ContratoRequest request) {
+        Cliente cliente = clienteRepository.findByIdAndDeletedAtIsNull(request.getClienteId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente", "id", request.getClienteId()));
 
-        Veiculo veiculo = veiculoRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getVeiculoId(), tenantId)
+        Veiculo veiculo = veiculoRepository.findByIdAndDeletedAtIsNull(request.getVeiculoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Veículo", "id", request.getVeiculoId()));
 
-        // 2. Regra de Negócio: Verificar se Veículo está disponível para locação
         if (veiculo.getStatus() != StatusVeiculo.DISPONIVEL) {
             throw new BusinessException("O veículo selecionado não está disponível para locação. Status atual: " + veiculo.getStatus());
         }
 
-        // 3. Regra de Negócio: Verificar se já existe contrato ativo para o veículo
-        if (contratoRepository.existsByVeiculoIdAndStatusAndTenantIdAndDeletedAtIsNull(veiculo.getId(), StatusContrato.ATIVO, tenantId)) {
+        if (contratoRepository.existsByVeiculoIdAndStatusAndDeletedAtIsNull(veiculo.getId(), StatusContrato.ATIVO)) {
             throw new BusinessException("O veículo selecionado já possui um contrato ativo.");
         }
 
-        // 4. Instanciar o Contrato
         Contrato contrato = contratoMapper.toEntity(request);
-        contrato.setTenantId(tenantId);
         contrato.setCliente(cliente);
         contrato.setVeiculo(veiculo);
         contrato.setStatus(StatusContrato.ATIVO);
-        
-        // Congela o Hodômetro atual do carro no contrato
         contrato.setKmInicial(veiculo.getQuilometragem());
-        
-        // 5. Atualizar Status do Veículo na Frota
+
         veiculo.setStatus(StatusVeiculo.LOCADO);
         veiculoRepository.save(veiculo);
 
-        // 6. Salvar Contrato
         contrato = contratoRepository.save(contrato);
-        log.info("Contrato {} criado com sucesso. (Veículo: {}, Cliente: {}, Tenant: {})", 
-                 contrato.getId(), veiculo.getPlaca(), cliente.getDocumento(), tenantId);
+        log.info("Contrato {} criado. Veículo: {}, Cliente: {}", contrato.getId(), veiculo.getPlaca(), cliente.getDocumento());
 
         return contratoMapper.toResponse(contrato);
     }
 
-    /**
-     * Lista contratos de forma paginada para a locadora.
-     */
     @Transactional(readOnly = true)
     public PagedResponse<ContratoResponse> listar(Pageable pageable) {
-        UUID tenantId = TenantContext.requireTenantId();
-        
-        Page<Contrato> page = contratoRepository.findByTenantIdAndDeletedAtIsNull(tenantId, pageable);
+        Page<Contrato> page = contratoRepository.findByDeletedAtIsNull(pageable);
         List<ContratoResponse> data = page.getContent().stream()
                 .map(contratoMapper::toResponse)
                 .toList();
@@ -124,26 +100,13 @@ public class ContratoService {
         return PagedResponse.of(data, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
     }
 
-    /**
-     * Busca os detalhes de um contrato isolando o cruzamento de locadoras.
-     */
     @Transactional(readOnly = true)
     public ContratoResponse buscarPorId(UUID id) {
         return contratoMapper.toResponse(obterContratoPorId(id));
     }
 
-    /**
-     * Encerra um contrato (Checkout da Locação).
-     * <p>Recebe a devolução das chaves, o hodômetro final, acerta os valores 
-     * adicionais e libera o veículo novamente para a frota.</p>
-     *
-     * @param id O ID do contrato a ser finalizado.
-     * @param request O payload com os dados de encerramento.
-     * @return Contrato finalizado.
-     */
     @Transactional
     public ContratoResponse encerrar(UUID id, EncerramentoContratoRequest request) {
-        UUID tenantId = TenantContext.requireTenantId();
         Contrato contrato = obterContratoPorId(id);
 
         if (contrato.getStatus() != StatusContrato.ATIVO) {
@@ -154,53 +117,37 @@ public class ContratoService {
             throw new BusinessException("A quilometragem final não pode ser menor que a inicial (" + contrato.getKmInicial() + " km).");
         }
 
-        // 1. Atualizar Contrato
         contrato.setStatus(StatusContrato.ENCERRADO);
         contrato.setDataDevolucao(request.getDataDevolucao());
         contrato.setKmFinal(request.getKmFinal());
-        
-        // Em um sistema real complexo haveria cálculo automático (franquia de KM), 
-        // mas aqui vamos apenas armazenar o quanto o usuário digitou ou calculou no frontend (opcional)
+
         if (request.getValorAdicional() != null) {
             contrato.setValorAdicional(request.getValorAdicional());
         }
 
-        // 2. Atualizar o Veículo da Frota (Devolver o carro)
         Veiculo veiculo = contrato.getVeiculo();
         veiculo.setQuilometragem(request.getKmFinal());
-        veiculo.setStatus(StatusVeiculo.DISPONIVEL); // Libera o veículo
+        veiculo.setStatus(StatusVeiculo.DISPONIVEL);
         veiculoRepository.save(veiculo);
 
-        // 3. Persistir e finalizar
         contrato = contratoRepository.save(contrato);
 
-        // 4. Integração Financeira: Lança a receita no caixa automaticamente
         BigDecimal valorAcerto = contrato.getValorTotal().add(contrato.getValorAdicional());
         LancamentoRequest lancamentoRequest = new LancamentoRequest(
-                TipoTransacao.RECEITA,
-                valorAcerto,
-                CategoriaFinanceira.ALUGUEL,
+                TipoTransacao.RECEITA, valorAcerto, CategoriaFinanceira.ALUGUEL,
                 "Recebimento referente ao contrato " + contrato.getId(),
-                StatusPagamento.PAGO,
-                LocalDate.now(),
-                LocalDate.now(),
-                veiculo.getId(),
-                contrato.getId()
+                StatusPagamento.PAGO, LocalDate.now(), LocalDate.now(),
+                veiculo.getId(), contrato.getId()
         );
-        financeiroService.criar(lancamentoRequest);
+        financeiroService.criarLancamento(lancamentoRequest);
 
-        log.info("Contrato {} encerrado com sucesso. Veículo {} devolvido ao pátio. (Tenant: {})", 
-                 contrato.getId(), veiculo.getPlaca(), tenantId);
+        log.info("Contrato {} encerrado. Veículo {} devolvido.", contrato.getId(), veiculo.getPlaca());
 
         return contratoMapper.toResponse(contrato);
     }
 
-    /**
-     * Auxiliar interno para obter o contrato garantindo a integridade de permissão do Tenant.
-     */
     private Contrato obterContratoPorId(UUID id) {
-        UUID tenantId = TenantContext.requireTenantId();
-        return contratoRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
+        return contratoRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contrato", "id", id));
     }
 }

@@ -15,9 +15,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Entidade base com colunas obrigatórias conforme 06-modelo-fisico.md:
- * id, tenant_id, created_at, created_by, updated_at, updated_by,
- * deleted_at, deleted_by, version.
+ * Entidade base com colunas de auditoria obrigatórias.
+ * Single-Tenant: não possui mais tenant_id.
  */
 @Getter
 @Setter
@@ -28,9 +27,6 @@ public abstract class BaseEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(updatable = false, nullable = false)
     private UUID id;
-
-    @Column(name = "tenant_id", nullable = false, updatable = false)
-    private UUID tenantId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -69,8 +65,7 @@ public abstract class BaseEntity {
     }
 
     /**
-     * Soft delete - conforme 06-modelo-fisico.md.
-     * Nenhum DELETE físico será utilizado na aplicação.
+     * Soft delete — nenhum DELETE físico será utilizado na aplicação.
      */
     public void softDelete(UUID deletedByUser) {
         this.deletedAt = LocalDateTime.now();

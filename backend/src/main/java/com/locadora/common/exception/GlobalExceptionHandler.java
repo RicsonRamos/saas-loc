@@ -41,11 +41,7 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
     }
 
-    @ExceptionHandler(TenantViolationException.class)
-    public ResponseEntity<ErrorResponse> handleTenantViolation(TenantViolationException ex, HttpServletRequest request) {
-        log.error("TENANT VIOLATION: {}", ex.getMessage());
-        return buildResponse(HttpStatus.FORBIDDEN, "Acesso negado", request);
-    }
+
 
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException ex, HttpServletRequest request) {

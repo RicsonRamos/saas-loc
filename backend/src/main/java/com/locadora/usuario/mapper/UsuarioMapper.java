@@ -14,13 +14,11 @@ public interface UsuarioMapper {
     UsuarioResponse toResponse(Usuario usuario);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "tenantId", ignore = true)
     @Mapping(target = "ativo", constant = "true")
-    @Mapping(target = "senha", ignore = true) // A senha é setada no service após encriptação
+    @Mapping(target = "senha", ignore = true)
     Usuario toEntity(UsuarioRequest request);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "tenantId", ignore = true)
     @Mapping(target = "email", ignore = true)
     @Mapping(target = "senha", ignore = true)
     void updateEntity(UsuarioUpdateRequest request, @MappingTarget Usuario usuario);

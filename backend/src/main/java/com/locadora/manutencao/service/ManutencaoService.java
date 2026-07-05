@@ -1,8 +1,8 @@
 package com.locadora.manutencao.service;
 
-import com.locadora.common.dto.PagedResponse;
 import com.locadora.common.exception.BusinessException;
 import com.locadora.common.exception.ResourceNotFoundException;
+import com.locadora.common.dto.PagedResponse;
 import com.locadora.financeiro.dto.LancamentoRequest;
 import com.locadora.financeiro.entity.CategoriaFinanceira;
 import com.locadora.financeiro.entity.StatusPagamento;
@@ -17,7 +17,6 @@ import com.locadora.manutencao.dto.ManutencaoResponse;
 import com.locadora.manutencao.entity.Manutencao;
 import com.locadora.manutencao.mapper.ManutencaoMapper;
 import com.locadora.manutencao.repository.ManutencaoRepository;
-import com.locadora.shared.tenant.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -26,12 +25,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Serviço responsável por orquestrar idas e vindas da oficina.
- * Controla o status do veículo e lança custos automaticamente no financeiro.
+ * Serviço de Manutenção — Single-Tenant.
  */
 @Service
 public class ManutencaoService {
@@ -53,79 +52,61 @@ public class ManutencaoService {
         this.financeiroService = financeiroService;
     }
 
-    /**
-     * Inicia o registro de manutenção e bloqueia o carro para locação.
-     */
     @Transactional
-    public ManutencaoResponse iniciar(ManutencaoRequest request) {
-        UUID tenantId = TenantContext.requireTenantId();
-
-        Veiculo veiculo = veiculoRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getVeiculoId(), tenantId)
+    public ManutencaoResponse registrarManutencao(ManutencaoRequest request) {
+        Veiculo veiculo = veiculoRepository.findByIdAndDeletedAtIsNull(request.getVeiculoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Veículo", "id", request.getVeiculoId()));
 
         if (veiculo.getStatus() == StatusVeiculo.LOCADO) {
-            throw new BusinessException("Não é possível enviar um carro LOCADO para a oficina. Encerre o contrato primeiro.");
+            throw new BusinessException("Veículo está locado e não pode entrar em manutenção.");
         }
 
-        // Bloqueia veículo na frota
+        Manutencao manutencao = manutencaoMapper.toEntity(request);
+        manutencao.setVeiculo(veiculo);
+        manutencao.setKmManutencao(veiculo.getQuilometragem());
+        manutencao.setDataInicio(LocalDate.now());
+
         veiculo.setStatus(StatusVeiculo.MANUTENCAO);
         veiculoRepository.save(veiculo);
 
-        Manutencao manutencao = manutencaoMapper.toEntity(request);
-        manutencao.setTenantId(tenantId);
-        manutencao.setVeiculo(veiculo);
-        manutencao.setKmManutencao(veiculo.getQuilometragem());
-        
         manutencao = manutencaoRepository.save(manutencao);
-        log.info("Veiculo {} enviado para manutenção. (Tenant: {})", veiculo.getPlaca(), tenantId);
+        log.info("Veículo {} enviado para manutenção.", veiculo.getPlaca());
 
         return manutencaoMapper.toResponse(manutencao);
     }
 
-    /**
-     * Conclui o serviço, libera o carro e debita o caixa.
-     */
     @Transactional
-    public ManutencaoResponse concluir(UUID id, ConclusaoManutencaoRequest request) {
-        UUID tenantId = TenantContext.requireTenantId();
+    public ManutencaoResponse concluirManutencao(UUID id, ConclusaoManutencaoRequest request) {
+        Manutencao manutencao = manutencaoRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Manutenção", "id", id));
 
-        Manutencao manutencao = manutencaoRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Manutencao", "id", id));
-
-        if (manutencao.isConcluida()) {
-            throw new BusinessException("Esta manutenção já foi concluída.");
-        }
-
+        manutencao.setDataFim(LocalDate.now());
         manutencao.setConcluida(true);
-        manutencao.setDataFim(request.getDataFim());
-        manutencao.setCusto(request.getCusto());
 
-        if (request.getDetalhesAdicionais() != null && !request.getDetalhesAdicionais().isBlank()) {
-            manutencao.setDescricao(manutencao.getDescricao() + " | Adicional: " + request.getDetalhesAdicionais());
+        if (request.getCusto() != null) {
+            manutencao.setCusto(request.getCusto());
         }
 
-        // Libera veículo na frota
         Veiculo veiculo = manutencao.getVeiculo();
         veiculo.setStatus(StatusVeiculo.DISPONIVEL);
         veiculoRepository.save(veiculo);
 
         manutencao = manutencaoRepository.save(manutencao);
 
-        // Gera a despesa financeira automaticamente se houve custo
-        if (request.getCusto() != null && request.getCusto().compareTo(BigDecimal.ZERO) > 0) {
-            LancamentoRequest despesa = new LancamentoRequest(
+        if (manutencao.getCusto() != null && manutencao.getCusto().compareTo(BigDecimal.ZERO) > 0) {
+            LancamentoRequest lancamento = new LancamentoRequest(
                     TipoTransacao.DESPESA,
-                    request.getCusto(),
+                    manutencao.getCusto(),
                     CategoriaFinanceira.MANUTENCAO,
-                    "Pagamento de oficina (Manutenção " + manutencao.getId() + ")",
+                    "Manutenção do veículo " + veiculo.getPlaca() + " - " + manutencao.getDescricao(),
                     StatusPagamento.PAGO,
-                    request.getDataFim(),
-                    request.getDataFim(),
+                    LocalDate.now(),
+                    LocalDate.now(),
                     veiculo.getId(),
                     null
             );
-            financeiroService.criar(despesa);
-            log.info("Despesa de oficina lançada no caixa para veículo {}. (Tenant: {})", veiculo.getPlaca(), tenantId);
+            financeiroService.criarLancamento(lancamento);
+            log.info("Despesa de oficina lançada no caixa para veículo {}.", veiculo.getPlaca());
         }
 
         return manutencaoMapper.toResponse(manutencao);
@@ -133,17 +114,19 @@ public class ManutencaoService {
 
     @Transactional(readOnly = true)
     public PagedResponse<ManutencaoResponse> listar(Pageable pageable) {
-        UUID tenantId = TenantContext.requireTenantId();
-        Page<Manutencao> page = manutencaoRepository.findByTenantIdAndDeletedAtIsNull(tenantId, pageable);
-        List<ManutencaoResponse> data = page.getContent().stream().map(manutencaoMapper::toResponse).toList();
+        Page<Manutencao> page = manutencaoRepository.findByDeletedAtIsNull(pageable);
+        List<ManutencaoResponse> data = page.getContent().stream()
+                .map(manutencaoMapper::toResponse)
+                .toList();
         return PagedResponse.of(data, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
     }
 
     @Transactional(readOnly = true)
     public PagedResponse<ManutencaoResponse> listarPorVeiculo(UUID veiculoId, Pageable pageable) {
-        UUID tenantId = TenantContext.requireTenantId();
-        Page<Manutencao> page = manutencaoRepository.findByVeiculoIdAndTenantIdAndDeletedAtIsNull(veiculoId, tenantId, pageable);
-        List<ManutencaoResponse> data = page.getContent().stream().map(manutencaoMapper::toResponse).toList();
+        Page<Manutencao> page = manutencaoRepository.findByVeiculoIdAndDeletedAtIsNull(veiculoId, pageable);
+        List<ManutencaoResponse> data = page.getContent().stream()
+                .map(manutencaoMapper::toResponse)
+                .toList();
         return PagedResponse.of(data, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
     }
 }

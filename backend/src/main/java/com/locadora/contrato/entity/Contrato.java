@@ -20,13 +20,7 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Aggregate Root: Contrato.
- * Representa uma locação, unindo Cliente e Veículo.
- * <p>
- * Herda de BaseEntity para possuir UUID, TenantId, Auditoria e Soft Delete.
- * </p>
- */
+
 @Entity
 @Table(name = "contratos")
 @Getter

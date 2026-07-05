@@ -9,7 +9,6 @@ import com.locadora.financeiro.repository.LancamentoFinanceiroRepository;
 import com.locadora.financeiro.service.FinanceiroService;
 import com.locadora.frota.entity.StatusVeiculo;
 import com.locadora.frota.repository.VeiculoRepository;
-import com.locadora.shared.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,11 +16,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Serviço exclusivo para montar o painel executivo (Dashboard).
+ * Serviço do Dashboard — Single-Tenant.
  * Foca em processamento matemático e agregação de dados em tempo real.
  */
 @Service
@@ -39,23 +37,15 @@ public class DashboardService {
         this.lancamentoFinanceiroRepository = lancamentoFinanceiroRepository;
     }
 
-    /**
-     * Monta o Payload pesado do dashboard utilizando chamadas otimizadas para o DB.
-     */
     @Transactional(readOnly = true)
     public DashboardResponse obterDashboardMensal() {
-        UUID tenantId = TenantContext.requireTenantId();
-        
-        // 1. KPI Frota
-        OcupacaoFrotaDTO frotaDTO = apurarOcupacaoFrota(tenantId);
-        
-        // 2. KPI Financeiro do Mês (Reutilizando a regra do EPIC 5)
+        OcupacaoFrotaDTO frotaDTO = apurarOcupacaoFrota();
+
         LocalDate hoje = LocalDate.now();
         FluxoCaixaResponse fluxo = financeiroService.obterFluxoMensal(hoje.getYear(), hoje.getMonthValue());
-        
-        // 3. KPI Rentabilidade (Calculado no Java após o GROUP BY do Postgres)
-        List<RentabilidadeVeiculoProjection> projecoes = lancamentoFinanceiroRepository.getRentabilidadeVeiculos(tenantId);
-        
+
+        List<RentabilidadeVeiculoProjection> projecoes = lancamentoFinanceiroRepository.getRentabilidadeVeiculos();
+
         List<RentabilidadeVeiculoDTO> rentabilidades = projecoes.stream().map(p -> {
             BigDecimal rec = p.getTotalReceitas() != null ? p.getTotalReceitas() : BigDecimal.ZERO;
             BigDecimal des = p.getTotalDespesas() != null ? p.getTotalDespesas() : BigDecimal.ZERO;
@@ -69,13 +59,11 @@ public class DashboardService {
                     .build();
         }).collect(Collectors.toList());
 
-        // Ordenar os Top 5 Lucro
         List<RentabilidadeVeiculoDTO> topRentaveis = rentabilidades.stream()
                 .sorted(Comparator.comparing(RentabilidadeVeiculoDTO::getSaldoLiquido).reversed())
                 .limit(5)
                 .toList();
 
-        // Ordenar os Top 5 Prejuízo
         List<RentabilidadeVeiculoDTO> topPrejuizo = rentabilidades.stream()
                 .sorted(Comparator.comparing(RentabilidadeVeiculoDTO::getSaldoLiquido))
                 .limit(5)
@@ -89,14 +77,11 @@ public class DashboardService {
                 .build();
     }
 
-    /**
-     * Calcula as porcentagens de ocupação.
-     */
-    private OcupacaoFrotaDTO apurarOcupacaoFrota(UUID tenantId) {
-        long total = veiculoRepository.countByTenantIdAndDeletedAtIsNull(tenantId);
-        long disponiveis = veiculoRepository.countByTenantIdAndStatusAndDeletedAtIsNull(tenantId, StatusVeiculo.DISPONIVEL);
-        long locados = veiculoRepository.countByTenantIdAndStatusAndDeletedAtIsNull(tenantId, StatusVeiculo.LOCADO);
-        long oficina = veiculoRepository.countByTenantIdAndStatusAndDeletedAtIsNull(tenantId, StatusVeiculo.MANUTENCAO);
+    private OcupacaoFrotaDTO apurarOcupacaoFrota() {
+        long total = veiculoRepository.countByDeletedAtIsNull();
+        long disponiveis = veiculoRepository.countByStatusAndDeletedAtIsNull(StatusVeiculo.DISPONIVEL);
+        long locados = veiculoRepository.countByStatusAndDeletedAtIsNull(StatusVeiculo.LOCADO);
+        long oficina = veiculoRepository.countByStatusAndDeletedAtIsNull(StatusVeiculo.MANUTENCAO);
 
         double taxaOcupacao = 0.0;
         if (total > 0) {
@@ -108,7 +93,7 @@ public class DashboardService {
                 .veiculosDisponiveis(disponiveis)
                 .veiculosLocados(locados)
                 .veiculosEmManutencao(oficina)
-                .taxaOcupacao(Math.round(taxaOcupacao * 100.0) / 100.0) // Arredonda 2 casas
+                .taxaOcupacao(Math.round(taxaOcupacao * 100.0) / 100.0)
                 .build();
     }
 }

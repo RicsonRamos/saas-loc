@@ -22,8 +22,8 @@ import java.time.LocalDate;
  */
 @Entity
 @Table(name = "veiculos", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_veiculos_placa_tenant", columnNames = {"placa", "tenant_id"}),
-        @UniqueConstraint(name = "uk_veiculos_chassi_tenant", columnNames = {"chassi", "tenant_id"})
+        @UniqueConstraint(name = "uk_veiculos_placa", columnNames = {"placa"}),
+        @UniqueConstraint(name = "uk_veiculos_chassi", columnNames = {"chassi"})
 })
 @Getter
 @Setter

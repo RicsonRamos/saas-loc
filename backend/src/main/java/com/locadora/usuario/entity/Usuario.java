@@ -19,11 +19,7 @@ import lombok.Setter;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * Aggregate Root: Usuário.
- * Conforme RF-006 a RF-010 e 07-segurança.md.
- * Todo usuário pertence a apenas um tenant.
- */
+
 @Entity
 @Table(name = "usuarios")
 @Getter

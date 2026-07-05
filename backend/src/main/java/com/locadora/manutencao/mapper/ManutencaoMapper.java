@@ -14,7 +14,6 @@ public interface ManutencaoMapper {
     ManutencaoResponse toResponse(Manutencao manutencao);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "tenantId", ignore = true)
     @Mapping(target = "veiculo", ignore = true)
     @Mapping(target = "kmManutencao", ignore = true)
     @Mapping(target = "dataFim", ignore = true)

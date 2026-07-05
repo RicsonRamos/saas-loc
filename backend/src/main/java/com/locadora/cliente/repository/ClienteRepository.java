@@ -10,15 +10,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Repository de Cliente.
- * Garante consultas isoladas por tenant.
+ * Repository de Cliente — Single-Tenant.
  */
 @Repository
 public interface ClienteRepository extends JpaRepository<Cliente, UUID> {
 
-    Page<Cliente> findByTenantIdAndDeletedAtIsNull(UUID tenantId, Pageable pageable);
+    Page<Cliente> findByDeletedAtIsNull(Pageable pageable);
 
-    Optional<Cliente> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
+    Optional<Cliente> findByIdAndDeletedAtIsNull(UUID id);
 
-    boolean existsByDocumentoAndTenantIdAndDeletedAtIsNull(String documento, UUID tenantId);
+    boolean existsByDocumentoAndDeletedAtIsNull(String documento);
 }

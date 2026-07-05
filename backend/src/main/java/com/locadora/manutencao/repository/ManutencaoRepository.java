@@ -10,24 +10,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Repository de Manutenção.
- * Aplica isolamento de tenant em todas as queries.
+ * Repository de Manutenção — Single-Tenant.
  */
 @Repository
 public interface ManutencaoRepository extends JpaRepository<Manutencao, UUID> {
 
-    /**
-     * Lista todas as manutenções da locadora.
-     */
-    Page<Manutencao> findByTenantIdAndDeletedAtIsNull(UUID tenantId, Pageable pageable);
-    
-    /**
-     * Lista as manutenções de um veículo específico.
-     */
-    Page<Manutencao> findByVeiculoIdAndTenantIdAndDeletedAtIsNull(UUID veiculoId, UUID tenantId, Pageable pageable);
+    Page<Manutencao> findByDeletedAtIsNull(Pageable pageable);
 
-    /**
-     * Busca uma manutenção por ID.
-     */
-    Optional<Manutencao> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
+    Page<Manutencao> findByVeiculoIdAndDeletedAtIsNull(UUID veiculoId, Pageable pageable);
+
+    Optional<Manutencao> findByIdAndDeletedAtIsNull(UUID id);
 }

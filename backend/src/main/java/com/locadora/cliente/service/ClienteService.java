@@ -8,7 +8,6 @@ import com.locadora.cliente.repository.ClienteRepository;
 import com.locadora.common.dto.PagedResponse;
 import com.locadora.common.exception.BusinessException;
 import com.locadora.common.exception.ResourceNotFoundException;
-import com.locadora.shared.tenant.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -20,8 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Serviço de Clientes.
- * Conforme 08-guard-rails.md: toda regra de negócio aqui.
+ * Serviço de Clientes — Single-Tenant.
  */
 @Service
 public class ClienteService {
@@ -38,26 +36,21 @@ public class ClienteService {
 
     @Transactional
     public ClienteResponse criar(ClienteRequest request) {
-        UUID tenantId = TenantContext.requireTenantId();
-
         String documentoLimpo = limparDocumento(request.getDocumento());
-        validarUnicidade(documentoLimpo, null, tenantId);
+        validarDocumentoUnico(documentoLimpo, null);
 
         Cliente cliente = clienteMapper.toEntity(request);
-        cliente.setTenantId(tenantId);
         cliente.setDocumento(documentoLimpo);
 
         cliente = clienteRepository.save(cliente);
-        log.info("Cliente criado com sucesso: {} (Tenant: {})", cliente.getDocumento(), tenantId);
+        log.info("Cliente criado com sucesso: {}", cliente.getDocumento());
 
         return clienteMapper.toResponse(cliente);
     }
 
     @Transactional(readOnly = true)
     public PagedResponse<ClienteResponse> listar(Pageable pageable) {
-        UUID tenantId = TenantContext.requireTenantId();
-        
-        Page<Cliente> page = clienteRepository.findByTenantIdAndDeletedAtIsNull(tenantId, pageable);
+        Page<Cliente> page = clienteRepository.findByDeletedAtIsNull(pageable);
         List<ClienteResponse> data = page.getContent().stream()
                 .map(clienteMapper::toResponse)
                 .toList();
@@ -72,17 +65,16 @@ public class ClienteService {
 
     @Transactional
     public ClienteResponse atualizar(UUID id, ClienteRequest request) {
-        UUID tenantId = TenantContext.requireTenantId();
         Cliente cliente = obterClientePorId(id);
 
         String documentoLimpo = limparDocumento(request.getDocumento());
-        validarUnicidade(documentoLimpo, cliente.getId(), tenantId);
+        validarDocumentoUnico(documentoLimpo, cliente.getId());
 
         clienteMapper.updateEntity(request, cliente);
         cliente.setDocumento(documentoLimpo);
 
         cliente = clienteRepository.save(cliente);
-        log.info("Cliente atualizado: {} (Tenant: {})", cliente.getDocumento(), tenantId);
+        log.info("Cliente atualizado: {}", cliente.getDocumento());
 
         return clienteMapper.toResponse(cliente);
     }
@@ -90,19 +82,13 @@ public class ClienteService {
     @Transactional
     public void excluir(UUID id, UUID currentUserId) {
         Cliente cliente = obterClientePorId(id);
-
-        // TODO (EPIC 4): Validar se o cliente possui contratos ativos antes de permitir exclusão.
-        // Como o módulo de Contratos ainda não existe, deixaremos um comentário.
-
         cliente.softDelete(currentUserId);
         clienteRepository.save(cliente);
-        
-        log.info("Cliente excluído (soft delete): {} (Tenant: {})", cliente.getDocumento(), cliente.getTenantId());
+        log.info("Cliente excluído (soft delete): {}", cliente.getDocumento());
     }
 
     private Cliente obterClientePorId(UUID id) {
-        UUID tenantId = TenantContext.requireTenantId();
-        return clienteRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
+        return clienteRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente", "id", id));
     }
 
@@ -111,15 +97,18 @@ public class ClienteService {
         return documento.replaceAll("[^0-9]", "");
     }
 
-    private void validarUnicidade(String documento, UUID clienteIdIgnorado, UUID tenantId) {
-        if (clienteRepository.existsByDocumentoAndTenantIdAndDeletedAtIsNull(documento, tenantId)) {
-            // Contorno simples para ignorar o próprio ID durante update
-            Cliente existente = clienteRepository.findByTenantIdAndDeletedAtIsNull(tenantId, Pageable.unpaged())
-                    .stream().filter(c -> c.getDocumento().equals(documento)).findFirst().orElse(null);
-            
-            if (existente != null && !existente.getId().equals(clienteIdIgnorado)) {
-                throw new BusinessException("Já existe um cliente cadastrado com este documento (CPF/CNPJ).");
-            }
+    private void validarDocumentoUnico(String documento, UUID clienteIdIgnorado) {
+        if (clienteRepository.existsByDocumentoAndDeletedAtIsNull(documento)) {
+            // Verifica se o documento pertence ao próprio cliente sendo atualizado
+            clienteRepository.findByDeletedAtIsNull(Pageable.unpaged())
+                    .stream()
+                    .filter(c -> c.getDocumento().equals(documento))
+                    .findFirst()
+                    .ifPresent(existente -> {
+                        if (!existente.getId().equals(clienteIdIgnorado)) {
+                            throw new BusinessException("Já existe um cliente cadastrado com este documento (CPF/CNPJ).");
+                        }
+                    });
         }
     }
 }

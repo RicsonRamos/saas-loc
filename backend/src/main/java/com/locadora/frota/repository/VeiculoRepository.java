@@ -11,21 +11,20 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Repository de Veículo.
- * Garante consultas isoladas por tenant.
+ * Repository de Veículo — Single-Tenant.
  */
 @Repository
 public interface VeiculoRepository extends JpaRepository<Veiculo, UUID> {
 
-    Page<Veiculo> findByTenantIdAndDeletedAtIsNull(UUID tenantId, Pageable pageable);
+    Page<Veiculo> findByDeletedAtIsNull(Pageable pageable);
 
-    Optional<Veiculo> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
+    Optional<Veiculo> findByIdAndDeletedAtIsNull(UUID id);
 
-    boolean existsByPlacaAndTenantIdAndDeletedAtIsNull(String placa, UUID tenantId);
+    boolean existsByPlacaAndDeletedAtIsNull(String placa);
 
-    boolean existsByChassiAndTenantIdAndDeletedAtIsNull(String chassi, UUID tenantId);
+    boolean existsByChassiAndDeletedAtIsNull(String chassi);
 
-    long countByTenantIdAndDeletedAtIsNull(UUID tenantId);
+    long countByDeletedAtIsNull();
 
-    long countByTenantIdAndStatusAndDeletedAtIsNull(UUID tenantId, StatusVeiculo status);
+    long countByStatusAndDeletedAtIsNull(StatusVeiculo status);
 }

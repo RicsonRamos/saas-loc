@@ -15,7 +15,6 @@ public interface LancamentoMapper {
     LancamentoResponse toResponse(LancamentoFinanceiro lancamento);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "tenantId", ignore = true)
     @Mapping(target = "veiculo", ignore = true)
     @Mapping(target = "contrato", ignore = true)
     LancamentoFinanceiro toEntity(LancamentoRequest request);
