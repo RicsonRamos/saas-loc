@@ -6,6 +6,7 @@ import com.locadora.security.dto.LoginRequest;
 import com.locadora.security.dto.RefreshTokenRequest;
 import com.locadora.security.dto.TokenResponse;
 import com.locadora.security.jwt.JwtTokenProvider;
+import com.locadora.auth.service.LoginAttemptService;
 import com.locadora.usuario.entity.Usuario;
 import com.locadora.usuario.repository.UsuarioRepository;
 import org.slf4j.Logger;
@@ -29,19 +30,26 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final UsuarioRepository usuarioRepository;
+    private final LoginAttemptService loginAttemptService;
     private final long accessExpirationMs;
 
     public AuthService(AuthenticationManager authenticationManager,
                        JwtTokenProvider jwtTokenProvider,
                        UsuarioRepository usuarioRepository,
+                       LoginAttemptService loginAttemptService,
                        @Value("${app.jwt.access-expiration-ms}") long accessExpirationMs) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
         this.usuarioRepository = usuarioRepository;
+        this.loginAttemptService = loginAttemptService;
         this.accessExpirationMs = accessExpirationMs;
     }
 
     public TokenResponse login(LoginRequest request) {
+        if (loginAttemptService.isBlocked(request.getEmail())) {
+            throw new BusinessException("Conta bloqueada por excesso de tentativas falhas. Tente novamente em 15 minutos.");
+        }
+
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getSenha())
@@ -61,6 +69,7 @@ public class AuthService {
 
             // Nunca logar tokens - conforme 07-segurança.md
             log.info("Login realizado com sucesso para usuário: {}", usuario.getEmail());
+            loginAttemptService.loginSucceeded(request.getEmail());
 
             return TokenResponse.builder()
                     .accessToken(accessToken)
@@ -71,6 +80,7 @@ public class AuthService {
 
         } catch (AuthenticationException e) {
             log.warn("Tentativa de login inválida para: {}", request.getEmail());
+            loginAttemptService.loginFailed(request.getEmail());
             throw new UnauthorizedException("Credenciais inválidas");
         }
     }

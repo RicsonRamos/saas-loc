@@ -49,6 +49,10 @@ api.interceptors.response.use(
           window.location.href = '/login';
         }
       }
+    } else if (status === 429) {
+      alert('Muitas requisições (Rate Limit). Por favor, aguarde um instante antes de tentar novamente.');
+    } else if (status === 403) {
+      alert('Você não tem permissão para acessar este recurso.');
     }
 
     return Promise.reject(error);

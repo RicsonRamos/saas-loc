@@ -1,5 +1,7 @@
 package com.locadora.config;
 
+import com.locadora.common.security.AuditLoggerFilter;
+import com.locadora.common.security.RateLimitingFilter;
 import com.locadora.security.jwt.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,9 +31,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitingFilter rateLimitingFilter;
+    private final AuditLoggerFilter auditLoggerFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          RateLimitingFilter rateLimitingFilter,
+                          AuditLoggerFilter auditLoggerFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.rateLimitingFilter = rateLimitingFilter;
+        this.auditLoggerFilter = auditLoggerFilter;
     }
 
     @Bean
@@ -55,8 +63,11 @@ public class SecurityConfig {
                         .contentTypeOptions(contentTypeOptions -> {})
                         .frameOptions(frameOptions -> frameOptions.deny())
                         .xssProtection(xss -> {})
+                        .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(auditLoggerFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
