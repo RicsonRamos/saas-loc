@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    url: jdbc:sqlite:database/locadora.db
+    driver-class-name: org.sqlite.JDBC
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.community.dialect.SQLiteDialect
+        format_sql: true
+      jakarta:
+        persistence:
+          sharedCache:
+            mode: NONE
+    open-in-view: false
+  flyway:
+    enabled: false # Desativado pois as migrations existentes contêm sintaxe PostgreSQL incompatível
+
+logging:
+  level:
+    com.locadora: INFO
+    org.hibernate.SQL: DEBUG
+  file:
+    name: logs/application.log
+
+server:
+  port: 8080
