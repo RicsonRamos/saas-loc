@@ -17,9 +17,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
 
     Optional<Usuario> findByEmailAndDeletedAtIsNull(String email);
 
-    boolean existsByEmail(String email);
+    boolean existsByEmailAndDeletedAtIsNull(String email);
 
-    Page<Usuario> findByDeletedAtIsNull(Pageable pageable);
+    Page<Usuario> findByTenantIdAndDeletedAtIsNull(UUID tenantId, Pageable pageable);
 
-    Optional<Usuario> findByIdAndDeletedAtIsNull(UUID id);
+    Optional<Usuario> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
 }

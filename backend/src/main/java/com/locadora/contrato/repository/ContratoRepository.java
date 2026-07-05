@@ -16,9 +16,9 @@ import java.util.UUID;
 @Repository
 public interface ContratoRepository extends JpaRepository<Contrato, UUID> {
 
-    Page<Contrato> findByDeletedAtIsNull(Pageable pageable);
+    Page<Contrato> findByTenantIdAndDeletedAtIsNull(UUID tenantId, Pageable pageable);
 
-    Optional<Contrato> findByIdAndDeletedAtIsNull(UUID id);
+    Optional<Contrato> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
 
-    boolean existsByVeiculoIdAndStatusAndDeletedAtIsNull(UUID veiculoId, StatusContrato status);
+    boolean existsByVeiculoIdAndStatusAndTenantIdAndDeletedAtIsNull(UUID veiculoId, StatusContrato status, UUID tenantId);
 }

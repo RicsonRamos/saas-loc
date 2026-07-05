@@ -18,8 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+import com.locadora.shared.tenant.TenantContext;
+
 /**
- * Serviço de Clientes — Single-Tenant.
+ * Serviço de Clientes — Multi-Tenant.
  */
 @Service
 public class ClienteService {
@@ -50,7 +52,7 @@ public class ClienteService {
 
     @Transactional(readOnly = true)
     public PagedResponse<ClienteResponse> listar(Pageable pageable) {
-        Page<Cliente> page = clienteRepository.findByDeletedAtIsNull(pageable);
+        Page<Cliente> page = clienteRepository.findByTenantIdAndDeletedAtIsNull(TenantContext.getTenantId(), pageable);
         List<ClienteResponse> data = page.getContent().stream()
                 .map(clienteMapper::toResponse)
                 .toList();
@@ -88,7 +90,7 @@ public class ClienteService {
     }
 
     private Cliente obterClientePorId(UUID id) {
-        return clienteRepository.findByIdAndDeletedAtIsNull(id)
+        return clienteRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, TenantContext.getTenantId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente", "id", id));
     }
 
@@ -98,9 +100,10 @@ public class ClienteService {
     }
 
     private void validarDocumentoUnico(String documento, UUID clienteIdIgnorado) {
-        if (clienteRepository.existsByDocumentoAndDeletedAtIsNull(documento)) {
+        UUID tenantId = TenantContext.getTenantId();
+        if (clienteRepository.existsByDocumentoAndTenantIdAndDeletedAtIsNull(documento, tenantId)) {
             // Verifica se o documento pertence ao próprio cliente sendo atualizado
-            clienteRepository.findByDeletedAtIsNull(Pageable.unpaged())
+            clienteRepository.findByTenantIdAndDeletedAtIsNull(tenantId, Pageable.unpaged())
                     .stream()
                     .filter(c -> c.getDocumento().equals(documento))
                     .findFirst()

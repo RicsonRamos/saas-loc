@@ -65,8 +65,8 @@ public class AuthService {
                 throw new BusinessException("Usuário inativo");
             }
 
-            String accessToken = jwtTokenProvider.generateAccessToken(usuario.getId(), usuario.getEmail());
-            String refreshToken = jwtTokenProvider.generateRefreshToken(usuario.getId(), usuario.getEmail());
+            String accessToken = jwtTokenProvider.generateAccessToken(usuario.getId(), usuario.getEmail(), usuario.getTenantId());
+            String refreshToken = jwtTokenProvider.generateRefreshToken(usuario.getId(), usuario.getEmail(), usuario.getTenantId());
 
             log.info("Login realizado com sucesso para usuário: {}", usuario.getEmail());
             loginAttemptService.loginSucceeded(request.getEmail());
@@ -102,8 +102,8 @@ public class AuthService {
         Usuario usuario = usuarioRepository.findByEmailAndDeletedAtIsNull(email)
                 .orElseThrow(() -> new UnauthorizedException("Usuário não encontrado"));
 
-        String newAccessToken = jwtTokenProvider.generateAccessToken(usuario.getId(), usuario.getEmail());
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(usuario.getId(), usuario.getEmail());
+        String newAccessToken = jwtTokenProvider.generateAccessToken(usuario.getId(), usuario.getEmail(), usuario.getTenantId());
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(usuario.getId(), usuario.getEmail(), usuario.getTenantId());
 
         return TokenResponse.builder()
                 .accessToken(newAccessToken)

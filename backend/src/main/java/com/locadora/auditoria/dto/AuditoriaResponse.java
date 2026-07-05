@@ -24,5 +24,6 @@ public class AuditoriaResponse {
     private String ip;
     private String userAgent;
     private String correlationId;
+    private UUID tenantId;
     private LocalDateTime createdAt;
 }

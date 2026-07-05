@@ -29,8 +29,10 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import com.locadora.shared.tenant.TenantContext;
+
 /**
- * Serviço de Manutenção — Single-Tenant.
+ * Serviço de Manutenção — Multi-Tenant.
  */
 @Service
 public class ManutencaoService {
@@ -54,7 +56,8 @@ public class ManutencaoService {
 
     @Transactional
     public ManutencaoResponse registrarManutencao(ManutencaoRequest request) {
-        Veiculo veiculo = veiculoRepository.findByIdAndDeletedAtIsNull(request.getVeiculoId())
+        UUID tenantId = TenantContext.getTenantId();
+        Veiculo veiculo = veiculoRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getVeiculoId(), tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Veículo", "id", request.getVeiculoId()));
 
         if (veiculo.getStatus() == StatusVeiculo.LOCADO) {
@@ -77,7 +80,8 @@ public class ManutencaoService {
 
     @Transactional
     public ManutencaoResponse concluirManutencao(UUID id, ConclusaoManutencaoRequest request) {
-        Manutencao manutencao = manutencaoRepository.findByIdAndDeletedAtIsNull(id)
+        UUID tenantId = TenantContext.getTenantId();
+        Manutencao manutencao = manutencaoRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Manutenção", "id", id));
 
         manutencao.setDataFim(LocalDate.now());
@@ -113,7 +117,8 @@ public class ManutencaoService {
 
     @Transactional(readOnly = true)
     public PagedResponse<ManutencaoResponse> listar(Pageable pageable) {
-        Page<Manutencao> page = manutencaoRepository.findByDeletedAtIsNull(pageable);
+        UUID tenantId = TenantContext.getTenantId();
+        Page<Manutencao> page = manutencaoRepository.findByTenantIdAndDeletedAtIsNull(tenantId, pageable);
         List<ManutencaoResponse> data = page.getContent().stream()
                 .map(manutencaoMapper::toResponse)
                 .toList();
@@ -122,7 +127,8 @@ public class ManutencaoService {
 
     @Transactional(readOnly = true)
     public PagedResponse<ManutencaoResponse> listarPorVeiculo(UUID veiculoId, Pageable pageable) {
-        Page<Manutencao> page = manutencaoRepository.findByVeiculoIdAndDeletedAtIsNull(veiculoId, pageable);
+        UUID tenantId = TenantContext.getTenantId();
+        Page<Manutencao> page = manutencaoRepository.findByVeiculoIdAndTenantIdAndDeletedAtIsNull(veiculoId, tenantId, pageable);
         List<ManutencaoResponse> data = page.getContent().stream()
                 .map(manutencaoMapper::toResponse)
                 .toList();

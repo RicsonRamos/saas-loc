@@ -25,8 +25,10 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import com.locadora.shared.tenant.TenantContext;
+
 /**
- * Serviço Financeiro — Single-Tenant.
+ * Serviço Financeiro — Multi-Tenant.
  */
 @Service
 public class FinanceiroService {
@@ -50,15 +52,16 @@ public class FinanceiroService {
 
     @Transactional
     public LancamentoResponse criarLancamento(LancamentoRequest request) {
+        UUID tenantId = TenantContext.getTenantId();
         LancamentoFinanceiro lancamento = lancamentoMapper.toEntity(request);
 
         if (request.getVeiculoId() != null) {
-            lancamento.setVeiculo(veiculoRepository.findByIdAndDeletedAtIsNull(request.getVeiculoId())
+            lancamento.setVeiculo(veiculoRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getVeiculoId(), tenantId)
                     .orElseThrow(() -> new ResourceNotFoundException("Veículo", "id", request.getVeiculoId())));
         }
 
         if (request.getContratoId() != null) {
-            lancamento.setContrato(contratoRepository.findByIdAndDeletedAtIsNull(request.getContratoId())
+            lancamento.setContrato(contratoRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getContratoId(), tenantId)
                     .orElseThrow(() -> new ResourceNotFoundException("Contrato", "id", request.getContratoId())));
         }
 
@@ -70,7 +73,8 @@ public class FinanceiroService {
 
     @Transactional(readOnly = true)
     public PagedResponse<LancamentoResponse> listar(Pageable pageable) {
-        Page<LancamentoFinanceiro> page = lancamentoRepository.findByDeletedAtIsNull(pageable);
+        UUID tenantId = TenantContext.getTenantId();
+        Page<LancamentoFinanceiro> page = lancamentoRepository.findByTenantIdAndDeletedAtIsNull(tenantId, pageable);
         List<LancamentoResponse> data = page.getContent().stream()
                 .map(lancamentoMapper::toResponse)
                 .toList();
@@ -80,7 +84,8 @@ public class FinanceiroService {
 
     @Transactional
     public void pagarLancamento(UUID id) {
-        LancamentoFinanceiro lancamento = lancamentoRepository.findByIdAndDeletedAtIsNull(id)
+        UUID tenantId = TenantContext.getTenantId();
+        LancamentoFinanceiro lancamento = lancamentoRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Lançamento", "id", id));
 
         if (lancamento.getStatus() == StatusPagamento.PAGO) {
@@ -94,14 +99,15 @@ public class FinanceiroService {
 
     @Transactional(readOnly = true)
     public FluxoCaixaResponse obterFluxoMensal(int ano, int mes) {
+        UUID tenantId = TenantContext.getTenantId();
         LocalDate inicio = LocalDate.of(ano, mes, 1);
         LocalDate fim = inicio.withDayOfMonth(inicio.lengthOfMonth());
 
         BigDecimal receitas = lancamentoRepository.sumValorByTipoAndStatusAndPeriodo(
-                TipoTransacao.RECEITA, StatusPagamento.PAGO, inicio, fim);
+                TipoTransacao.RECEITA, StatusPagamento.PAGO, inicio, fim, tenantId);
 
         BigDecimal despesas = lancamentoRepository.sumValorByTipoAndStatusAndPeriodo(
-                TipoTransacao.DESPESA, StatusPagamento.PAGO, inicio, fim);
+                TipoTransacao.DESPESA, StatusPagamento.PAGO, inicio, fim, tenantId);
 
         receitas = (receitas == null) ? BigDecimal.ZERO : receitas;
         despesas = (despesas == null) ? BigDecimal.ZERO : despesas;

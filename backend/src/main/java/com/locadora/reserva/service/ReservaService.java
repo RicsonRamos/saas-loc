@@ -29,6 +29,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.locadora.shared.tenant.TenantContext;
+
 @Service
 public class ReservaService {
 
@@ -58,15 +60,17 @@ public class ReservaService {
             throw new BusinessException("A data de término não pode ser anterior à data de início.");
         }
 
-        Cliente cliente = clienteRepository.findByIdAndDeletedAtIsNull(request.getClienteId())
+        UUID tenantId = TenantContext.getTenantId();
+
+        Cliente cliente = clienteRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getClienteId(), tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente", "id", request.getClienteId()));
 
         Veiculo veiculo = null;
         if (request.getVeiculoId() != null) {
-            veiculo = veiculoRepository.findByIdAndDeletedAtIsNull(request.getVeiculoId())
+            veiculo = veiculoRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getVeiculoId(), tenantId)
                     .orElseThrow(() -> new ResourceNotFoundException("Veículo", "id", request.getVeiculoId()));
 
-            if (repository.existsConflict(veiculo.getId(), request.getDataInicio(), request.getDataFim(), null)) {
+            if (repository.existsConflict(veiculo.getId(), request.getDataInicio(), request.getDataFim(), null, tenantId)) {
                 throw new BusinessException("O veículo já possui reserva ou aluguel ativo para o período informado.");
             }
         }
@@ -84,7 +88,9 @@ public class ReservaService {
 
     @Transactional
     public ReservaResponse atualizar(UUID id, ReservaRequest request) {
-        Reserva reserva = repository.findByIdAndDeletedAtIsNull(id)
+        UUID tenantId = TenantContext.getTenantId();
+
+        Reserva reserva = repository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", "id", id));
 
         if (reserva.getStatus() == StatusReserva.CONVERTIDO_EM_CONTRATO || reserva.getStatus() == StatusReserva.FINALIZADO) {
@@ -96,10 +102,10 @@ public class ReservaService {
         }
 
         if (request.getVeiculoId() != null) {
-            Veiculo veiculo = veiculoRepository.findByIdAndDeletedAtIsNull(request.getVeiculoId())
+            Veiculo veiculo = veiculoRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getVeiculoId(), tenantId)
                     .orElseThrow(() -> new ResourceNotFoundException("Veículo", "id", request.getVeiculoId()));
 
-            if (repository.existsConflict(veiculo.getId(), request.getDataInicio(), request.getDataFim(), id)) {
+            if (repository.existsConflict(veiculo.getId(), request.getDataInicio(), request.getDataFim(), id, tenantId)) {
                 throw new BusinessException("O veículo já possui reserva ativa para o período informado.");
             }
             reserva.setVeiculo(veiculo);
@@ -116,7 +122,8 @@ public class ReservaService {
 
     @Transactional
     public ReservaResponse cancelar(UUID id) {
-        Reserva reserva = repository.findByIdAndDeletedAtIsNull(id)
+        UUID tenantId = TenantContext.getTenantId();
+        Reserva reserva = repository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", "id", id));
 
         if (reserva.getStatus() == StatusReserva.CONVERTIDO_EM_CONTRATO || reserva.getStatus() == StatusReserva.FINALIZADO) {
@@ -131,7 +138,8 @@ public class ReservaService {
 
     @Transactional
     public ReservaResponse confirmar(UUID id) {
-        Reserva reserva = repository.findByIdAndDeletedAtIsNull(id)
+        UUID tenantId = TenantContext.getTenantId();
+        Reserva reserva = repository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", "id", id));
 
         if (reserva.getStatus() != StatusReserva.RESERVADO) {
@@ -146,7 +154,8 @@ public class ReservaService {
 
     @Transactional
     public void excluir(UUID id, UUID currentUserId) {
-        Reserva reserva = repository.findByIdAndDeletedAtIsNull(id)
+        UUID tenantId = TenantContext.getTenantId();
+        Reserva reserva = repository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", "id", id));
 
         reserva.softDelete(currentUserId);
@@ -156,7 +165,8 @@ public class ReservaService {
 
     @Transactional(readOnly = true)
     public PagedResponse<ReservaResponse> listar(Pageable pageable) {
-        Page<Reserva> page = repository.findByDeletedAtIsNull(pageable);
+        UUID tenantId = TenantContext.getTenantId();
+        Page<Reserva> page = repository.findByTenantIdAndDeletedAtIsNull(tenantId, pageable);
         List<ReservaResponse> data = page.getContent().stream()
                 .map(mapper::toResponse)
                 .toList();
@@ -166,14 +176,16 @@ public class ReservaService {
 
     @Transactional(readOnly = true)
     public ReservaResponse buscarPorId(UUID id) {
-        Reserva reserva = repository.findByIdAndDeletedAtIsNull(id)
+        UUID tenantId = TenantContext.getTenantId();
+        Reserva reserva = repository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", "id", id));
         return mapper.toResponse(reserva);
     }
 
     @Transactional
     public UUID converterEmContrato(UUID id, BigDecimal valorDiaria) {
-        Reserva reserva = repository.findByIdAndDeletedAtIsNull(id)
+        UUID tenantId = TenantContext.getTenantId();
+        Reserva reserva = repository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", "id", id));
 
         if (reserva.getStatus() == StatusReserva.CANCELADO || reserva.getStatus() == StatusReserva.CONVERTIDO_EM_CONTRATO) {

@@ -15,9 +15,9 @@ import java.util.UUID;
 @Repository
 public interface ManutencaoRepository extends JpaRepository<Manutencao, UUID> {
 
-    Page<Manutencao> findByDeletedAtIsNull(Pageable pageable);
+    Page<Manutencao> findByTenantIdAndDeletedAtIsNull(UUID tenantId, Pageable pageable);
 
-    Page<Manutencao> findByVeiculoIdAndDeletedAtIsNull(UUID veiculoId, Pageable pageable);
+    Page<Manutencao> findByVeiculoIdAndTenantIdAndDeletedAtIsNull(UUID veiculoId, UUID tenantId, Pageable pageable);
 
-    Optional<Manutencao> findByIdAndDeletedAtIsNull(UUID id);
+    Optional<Manutencao> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
 }

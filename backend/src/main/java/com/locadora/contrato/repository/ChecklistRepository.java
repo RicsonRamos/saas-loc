@@ -12,7 +12,9 @@ import java.util.UUID;
 @Repository
 public interface ChecklistRepository extends JpaRepository<Checklist, UUID> {
 
-    List<Checklist> findByContratoIdAndDeletedAtIsNull(UUID contratoId);
+    List<Checklist> findByContratoIdAndTenantIdAndDeletedAtIsNull(UUID contratoId, UUID tenantId);
 
-    Optional<Checklist> findByContratoIdAndTipoAndDeletedAtIsNull(UUID contratoId, TipoChecklist tipo);
+    Optional<Checklist> findByContratoIdAndTipoAndTenantIdAndDeletedAtIsNull(UUID contratoId, TipoChecklist tipo, UUID tenantId);
+
+    Optional<Checklist> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
 }

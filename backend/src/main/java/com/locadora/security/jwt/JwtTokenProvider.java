@@ -37,21 +37,22 @@ public class JwtTokenProvider {
         this.refreshExpirationMs = refreshExpirationMs;
     }
 
-    public String generateAccessToken(UUID userId, String email) {
-        return buildToken(userId, email, accessExpirationMs, "ACCESS");
+    public String generateAccessToken(UUID userId, String email, UUID tenantId) {
+        return buildToken(userId, email, tenantId, accessExpirationMs, "ACCESS");
     }
 
-    public String generateRefreshToken(UUID userId, String email) {
-        return buildToken(userId, email, refreshExpirationMs, "REFRESH");
+    public String generateRefreshToken(UUID userId, String email, UUID tenantId) {
+        return buildToken(userId, email, tenantId, refreshExpirationMs, "REFRESH");
     }
 
-    private String buildToken(UUID userId, String email, long expirationMs, String type) {
+    private String buildToken(UUID userId, String email, UUID tenantId, long expirationMs, String type) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
                 .subject(userId.toString())
                 .claim("email", email)
+                .claim("tenantId", tenantId != null ? tenantId.toString() : null)
                 .claim("type", type)
                 .issuedAt(now)
                 .expiration(expiry)
@@ -62,6 +63,12 @@ public class JwtTokenProvider {
     public UUID getUserIdFromToken(String token) {
         Claims claims = parseClaims(token);
         return UUID.fromString(claims.getSubject());
+    }
+
+    public UUID getTenantIdFromToken(String token) {
+        Claims claims = parseClaims(token);
+        String tenantIdStr = claims.get("tenantId", String.class);
+        return tenantIdStr != null ? UUID.fromString(tenantIdStr) : null;
     }
 
     public String getEmailFromToken(String token) {

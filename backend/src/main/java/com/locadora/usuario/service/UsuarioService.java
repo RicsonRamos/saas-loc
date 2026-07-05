@@ -20,8 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+import com.locadora.shared.tenant.TenantContext;
+
 /**
- * Serviço de Usuários — Single-Tenant.
+ * Serviço de Usuários — Multi-Tenant.
  */
 @Service
 public class UsuarioService {
@@ -42,12 +44,15 @@ public class UsuarioService {
 
     @Transactional
     public UsuarioResponse criar(UsuarioRequest request) {
-        if (usuarioRepository.existsByEmail(request.getEmail())) {
+        if (usuarioRepository.existsByEmailAndDeletedAtIsNull(request.getEmail())) {
             throw new BusinessException("E-mail já cadastrado");
         }
 
         Usuario usuario = usuarioMapper.toEntity(request);
         usuario.setSenha(passwordEncoder.encode(request.getSenha()));
+
+        // O tenant_id do usuário criado herdará o do criador/contexto
+        usuario.setTenantId(TenantContext.getTenantId());
 
         usuario = usuarioRepository.save(usuario);
         log.info("Usuário criado com sucesso: {}", usuario.getEmail());
@@ -57,7 +62,7 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public PagedResponse<UsuarioResponse> listar(Pageable pageable) {
-        Page<Usuario> page = usuarioRepository.findByDeletedAtIsNull(pageable);
+        Page<Usuario> page = usuarioRepository.findByTenantIdAndDeletedAtIsNull(TenantContext.getTenantId(), pageable);
         List<UsuarioResponse> data = page.getContent().stream()
                 .map(usuarioMapper::toResponse)
                 .toList();
@@ -100,7 +105,7 @@ public class UsuarioService {
     }
 
     private Usuario obterUsuarioPorId(UUID id) {
-        return usuarioRepository.findByIdAndDeletedAtIsNull(id)
+        return usuarioRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, TenantContext.getTenantId())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário", "id", id));
     }
 }

@@ -46,6 +46,9 @@ public abstract class BaseEntity {
     @Column(name = "deleted_by")
     private UUID deletedBy;
 
+    @Column(name = "tenant_id", nullable = false, updatable = false)
+    private UUID tenantId;
+
     @Version
     @Column(nullable = false)
     private Long version;
@@ -56,6 +59,9 @@ public abstract class BaseEntity {
         this.updatedAt = LocalDateTime.now();
         if (this.version == null) {
             this.version = 0L;
+        }
+        if (this.tenantId == null) {
+            this.tenantId = com.locadora.shared.tenant.TenantContext.getTenantId();
         }
     }
 

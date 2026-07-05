@@ -15,9 +15,9 @@ import java.util.UUID;
 @Repository
 public interface ClienteRepository extends JpaRepository<Cliente, UUID> {
 
-    Page<Cliente> findByDeletedAtIsNull(Pageable pageable);
+    Page<Cliente> findByTenantIdAndDeletedAtIsNull(UUID tenantId, Pageable pageable);
 
-    Optional<Cliente> findByIdAndDeletedAtIsNull(UUID id);
+    Optional<Cliente> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
 
-    boolean existsByDocumentoAndDeletedAtIsNull(String documento);
+    boolean existsByDocumentoAndTenantIdAndDeletedAtIsNull(String documento, UUID tenantId);
 }

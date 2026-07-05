@@ -8,9 +8,10 @@ import com.locadora.cliente.entity.Cliente;
 import com.locadora.cliente.repository.ClienteRepository;
 import com.locadora.common.exception.ResourceNotFoundException;
 import com.locadora.frota.entity.DocumentoVeiculo;
-import com.locadora.frota.entity.Veiculo;
 import com.locadora.frota.repository.DocumentoVeiculoRepository;
-import com.locadora.frota.repository.VeiculoRepository;
+import com.locadora.shared.tenant.TenantContext;
+import com.locadora.usuario.entity.Usuario;
+import com.locadora.usuario.repository.UsuarioRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -28,36 +29,36 @@ public class AlertaService {
 
     private final AlertaRepository repository;
     private final ClienteRepository clienteRepository;
-    private final VeiculoRepository veiculoRepository;
     private final DocumentoVeiculoRepository documentoVeiculoRepository;
+    private final UsuarioRepository usuarioRepository;
 
     public AlertaService(AlertaRepository repository,
                          ClienteRepository clienteRepository,
-                         VeiculoRepository veiculoRepository,
-                         DocumentoVeiculoRepository documentoVeiculoRepository) {
+                         DocumentoVeiculoRepository documentoVeiculoRepository,
+                         UsuarioRepository usuarioRepository) {
         this.repository = repository;
         this.clienteRepository = clienteRepository;
-        this.veiculoRepository = veiculoRepository;
         this.documentoVeiculoRepository = documentoVeiculoRepository;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @Transactional(readOnly = true)
     public List<AlertaResponse> obterPendentes() {
-        return repository.findByLidoFalseAndDeletedAtIsNullOrderByDataAlertaDesc().stream()
+        return repository.findByTenantIdAndLidoFalseAndDeletedAtIsNullOrderByDataAlertaDesc(TenantContext.getTenantId()).stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<AlertaResponse> obterTodos() {
-        return repository.findByDeletedAtIsNullOrderByDataAlertaDesc().stream()
+        return repository.findByTenantIdAndDeletedAtIsNullOrderByDataAlertaDesc(TenantContext.getTenantId()).stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
     @Transactional
     public void marcarComoLido(UUID id) {
-        Alerta alerta = repository.findByIdAndDeletedAtIsNull(id)
+        Alerta alerta = repository.findByIdAndTenantIdAndDeletedAtIsNull(id, TenantContext.getTenantId())
                 .orElseThrow(() -> new ResourceNotFoundException("Alerta", "id", id));
         alerta.setLido(true);
         repository.save(alerta);
@@ -66,7 +67,7 @@ public class AlertaService {
 
     @Transactional
     public void marcarTodosComoLidos() {
-        List<Alerta> pendentes = repository.findByLidoFalseAndDeletedAtIsNullOrderByDataAlertaDesc();
+        List<Alerta> pendentes = repository.findByTenantIdAndLidoFalseAndDeletedAtIsNullOrderByDataAlertaDesc(TenantContext.getTenantId());
         pendentes.forEach(alerta -> alerta.setLido(true));
         repository.saveAll(pendentes);
         log.info("Todos os alertas pendentes foram marcados como lidos.");
@@ -74,7 +75,8 @@ public class AlertaService {
 
     @Transactional
     public void criarAlerta(TipoAlerta tipo, String titulo, String descricao, UUID entidadeId) {
-        if (repository.existsByTipoAndEntidadeIdAndLidoFalseAndDeletedAtIsNull(tipo, entidadeId)) {
+        UUID tenantId = TenantContext.getTenantId();
+        if (repository.existsByTipoAndEntidadeIdAndLidoFalseAndTenantIdAndDeletedAtIsNull(tipo, entidadeId, tenantId)) {
             // Evita criar alertas duplicados idênticos ainda não lidos
             return;
         }
@@ -87,6 +89,7 @@ public class AlertaService {
                 .lido(false)
                 .dataAlerta(LocalDate.now())
                 .build();
+        alerta.setTenantId(tenantId);
 
         repository.save(alerta);
         log.info("Alerta gerado: {} - {}", titulo, tipo);
@@ -99,12 +102,33 @@ public class AlertaService {
     @Scheduled(cron = "0 0 0 * * ?")
     @Transactional
     public void verificarEPontuarAlertas() {
-        log.info("Iniciando varredura automatizada para geração de alertas...");
+        log.info("Iniciando varredura automatizada para geração de alertas multi-tenant...");
 
+        // Busca todos os tenants distintos cadastrados no sistema através dos usuários
+        List<UUID> tenantIds = usuarioRepository.findAll().stream()
+                .map(Usuario::getTenantId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+
+        for (UUID tenantId : tenantIds) {
+            try {
+                TenantContext.setTenantId(tenantId);
+                verificarEPontuarAlertasParaTenant(tenantId);
+            } catch (Exception e) {
+                log.error("Erro ao processar alertas para o tenant {}: {}", tenantId, e.getMessage());
+            } finally {
+                TenantContext.clear();
+            }
+        }
+        log.info("Varredura de alertas concluída.");
+    }
+
+    private void verificarEPontuarAlertasParaTenant(UUID tenantId) {
         LocalDate limite30Dias = LocalDate.now().plusDays(30);
 
         // 1. Verificar CNH de Clientes
-        List<Cliente> clientes = clienteRepository.findByDeletedAtIsNull(org.springframework.data.domain.Pageable.unpaged()).getContent();
+        List<Cliente> clientes = clienteRepository.findByTenantIdAndDeletedAtIsNull(tenantId, org.springframework.data.domain.Pageable.unpaged()).getContent();
         for (Cliente c : clientes) {
             if (c.getCnhValidade() != null && c.getCnhValidade().isBefore(limite30Dias)) {
                 String desc = "A CNH do cliente " + c.getNome() + " vence em " + c.getCnhValidade();
@@ -113,13 +137,11 @@ public class AlertaService {
         }
 
         // 2. Verificar Documentos de Veículos (IPVA, Seguro, Licenciamento)
-        List<DocumentoVeiculo> documentos = documentoVeiculoRepository.findByDeletedAtIsNullAndValidadeBetween(LocalDate.now().minusYears(1), limite30Dias);
+        List<DocumentoVeiculo> documentos = documentoVeiculoRepository.findByTenantIdAndDeletedAtIsNullAndValidadeBetween(tenantId, LocalDate.now().minusYears(1), limite30Dias);
         for (DocumentoVeiculo doc : documentos) {
             String desc = "O documento de " + doc.getTipo() + " do veículo de placa " + doc.getVeiculo().getPlaca() + " vence em " + doc.getValidade();
             criarAlerta(TipoAlerta.valueOf(doc.getTipo().name()), "Vencimento de Documento de Veículo", desc, doc.getVeiculo().getId());
         }
-
-        log.info("Varredura de alertas concluída.");
     }
 
     private AlertaResponse mapToResponse(Alerta entity) {

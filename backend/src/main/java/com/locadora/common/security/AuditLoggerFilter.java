@@ -11,11 +11,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.locadora.shared.tenant.TenantContext;
 import java.io.IOException;
 
 /**
- * Filtro de auditoria — Single-Tenant.
- * Registra todas as requisições HTTP com usuário, método, rota e IP.
+ * Filtro de auditoria — Multi-Tenant.
+ * Registra todas as requisições HTTP com usuário, tenant, método, rota e IP.
  */
 @Component
 public class AuditLoggerFilter extends OncePerRequestFilter {
@@ -31,8 +32,10 @@ public class AuditLoggerFilter extends OncePerRequestFilter {
                 ? auth.getName()
                 : "ANONIMO";
 
-        log.info("[AUDIT] Usuário: {} | Rota: {} {} | IP: {} | User-Agent: {}",
-                username, request.getMethod(), request.getRequestURI(), request.getRemoteAddr(),
+        java.util.UUID tenantId = TenantContext.getTenantId();
+
+        log.info("[AUDIT] Usuário: {} | Tenant: {} | Rota: {} {} | IP: {} | User-Agent: {}",
+                username, tenantId, request.getMethod(), request.getRequestURI(), request.getRemoteAddr(),
                 request.getHeader("User-Agent"));
 
         filterChain.doFilter(request, response);

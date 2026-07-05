@@ -16,15 +16,15 @@ import java.util.UUID;
 @Repository
 public interface VeiculoRepository extends JpaRepository<Veiculo, UUID> {
 
-    Page<Veiculo> findByDeletedAtIsNull(Pageable pageable);
+    Page<Veiculo> findByTenantIdAndDeletedAtIsNull(UUID tenantId, Pageable pageable);
 
-    Optional<Veiculo> findByIdAndDeletedAtIsNull(UUID id);
+    Optional<Veiculo> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
 
-    boolean existsByPlacaAndDeletedAtIsNull(String placa);
+    boolean existsByPlacaAndTenantIdAndDeletedAtIsNull(String placa, UUID tenantId);
 
-    boolean existsByChassiAndDeletedAtIsNull(String chassi);
+    boolean existsByChassiAndTenantIdAndDeletedAtIsNull(String chassi, UUID tenantId);
 
-    long countByDeletedAtIsNull();
+    long countByTenantIdAndDeletedAtIsNull(UUID tenantId);
 
-    long countByStatusAndDeletedAtIsNull(StatusVeiculo status);
+    long countByStatusAndTenantIdAndDeletedAtIsNull(StatusVeiculo status, UUID tenantId);
 }

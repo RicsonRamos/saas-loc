@@ -21,6 +21,8 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import java.util.List;
 import java.util.UUID;
 
+import com.locadora.shared.tenant.TenantContext;
+
 @Service
 public class AuditoriaService {
 
@@ -82,6 +84,7 @@ public class AuditoriaService {
                 .ip(ip)
                 .userAgent(userAgent)
                 .correlationId(correlationId)
+                .tenantId(TenantContext.getTenantId())
                 .build();
 
         repository.save(audit);
@@ -90,7 +93,7 @@ public class AuditoriaService {
 
     @Transactional(readOnly = true)
     public PagedResponse<AuditoriaResponse> listar(Pageable pageable) {
-        Page<Auditoria> page = repository.findAllByOrderByCreatedAtDesc(pageable);
+        Page<Auditoria> page = repository.findByTenantIdOrderByCreatedAtDesc(TenantContext.getTenantId(), pageable);
         List<AuditoriaResponse> data = page.getContent().stream()
                 .map(this::mapToResponse)
                 .toList();
@@ -110,6 +113,7 @@ public class AuditoriaService {
                 .ip(entity.getIp())
                 .userAgent(entity.getUserAgent())
                 .correlationId(entity.getCorrelationId())
+                .tenantId(entity.getTenantId())
                 .createdAt(entity.getCreatedAt())
                 .build();
     }

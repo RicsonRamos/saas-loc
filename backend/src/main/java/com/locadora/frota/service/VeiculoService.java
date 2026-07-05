@@ -19,8 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+import com.locadora.shared.tenant.TenantContext;
+
 /**
- * Serviço de Frota (Veículos) — Single-Tenant.
+ * Serviço de Frota (Veículos) — Multi-Tenant.
  */
 @Service
 public class VeiculoService {
@@ -50,7 +52,7 @@ public class VeiculoService {
 
     @Transactional(readOnly = true)
     public PagedResponse<VeiculoResponse> listar(Pageable pageable) {
-        Page<Veiculo> page = veiculoRepository.findByDeletedAtIsNull(pageable);
+        Page<Veiculo> page = veiculoRepository.findByTenantIdAndDeletedAtIsNull(TenantContext.getTenantId(), pageable);
         List<VeiculoResponse> data = page.getContent().stream()
                 .map(veiculoMapper::toResponse)
                 .toList();
@@ -91,7 +93,7 @@ public class VeiculoService {
     }
 
     private Veiculo obterVeiculoPorId(UUID id) {
-        return veiculoRepository.findByIdAndDeletedAtIsNull(id)
+        return veiculoRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, TenantContext.getTenantId())
                 .orElseThrow(() -> new ResourceNotFoundException("Veículo", "id", id));
     }
 
@@ -105,14 +107,16 @@ public class VeiculoService {
     }
 
     private boolean existeOutroComPlaca(String placa, UUID idIgnorado) {
-        return veiculoRepository.findByDeletedAtIsNull(Pageable.unpaged())
+        UUID tenantId = TenantContext.getTenantId();
+        return veiculoRepository.findByTenantIdAndDeletedAtIsNull(tenantId, Pageable.unpaged())
                 .stream()
                 .filter(v -> v.getPlaca().equalsIgnoreCase(placa))
                 .anyMatch(v -> !v.getId().equals(idIgnorado));
     }
 
     private boolean existeOutroComChassi(String chassi, UUID idIgnorado) {
-        return veiculoRepository.findByDeletedAtIsNull(Pageable.unpaged())
+        UUID tenantId = TenantContext.getTenantId();
+        return veiculoRepository.findByTenantIdAndDeletedAtIsNull(tenantId, Pageable.unpaged())
                 .stream()
                 .filter(v -> v.getChassi().equalsIgnoreCase(chassi))
                 .anyMatch(v -> !v.getId().equals(idIgnorado));
