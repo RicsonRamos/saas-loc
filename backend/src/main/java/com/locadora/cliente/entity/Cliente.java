@@ -78,4 +78,14 @@ public class Cliente extends BaseEntity {
 
     @Column(name = "comprovante_residencia_url", length = 500)
     private String comprovanteResidenciaUrl;
+
+    @Column(name = "cnh_categoria", length = 5)
+    private String cnhCategoria;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean bloqueado = false;
+
+    @Column(columnDefinition = "TEXT")
+    private String observacoes;
 }

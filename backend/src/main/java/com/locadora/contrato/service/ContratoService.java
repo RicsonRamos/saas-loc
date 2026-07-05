@@ -133,12 +133,17 @@ public class ContratoService {
         contrato = contratoRepository.save(contrato);
 
         BigDecimal valorAcerto = contrato.getValorTotal().add(contrato.getValorAdicional());
-        LancamentoRequest lancamentoRequest = new LancamentoRequest(
-                TipoTransacao.RECEITA, valorAcerto, CategoriaFinanceira.ALUGUEL,
-                "Recebimento referente ao contrato " + contrato.getId(),
-                StatusPagamento.PAGO, LocalDate.now(), LocalDate.now(),
-                veiculo.getId(), contrato.getId()
-        );
+        LancamentoRequest lancamentoRequest = LancamentoRequest.builder()
+                .tipo(TipoTransacao.RECEITA)
+                .valor(valorAcerto)
+                .categoria(CategoriaFinanceira.ALUGUEL)
+                .descricao("Recebimento referente ao contrato " + contrato.getId())
+                .status(StatusPagamento.PAGO)
+                .dataVencimento(LocalDate.now())
+                .dataPagamento(LocalDate.now())
+                .veiculoId(veiculo.getId())
+                .contratoId(contrato.getId())
+                .build();
         financeiroService.criarLancamento(lancamentoRequest);
 
         log.info("Contrato {} encerrado. Veículo {} devolvido.", contrato.getId(), veiculo.getPlaca());

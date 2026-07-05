@@ -32,4 +32,7 @@ public class ClienteResponse {
 
     private String cnhUrl;
     private String comprovanteResidenciaUrl;
+    private String cnhCategoria;
+    private Boolean bloqueado;
+    private String observacoes;
 }

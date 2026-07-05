@@ -56,4 +56,12 @@ public class ContratoRequest {
      */
     @DecimalMin(value = "0.0", message = "A caução não pode ser negativa")
     private BigDecimal caucao;
+
+    private UUID checklistRetiradaId;
+    private UUID checklistDevolucaoId;
+    private BigDecimal multas;
+    private String combustivel;
+    private String acessorios;
+    private String observacoes;
+    private String assinaturaUrl;
 }

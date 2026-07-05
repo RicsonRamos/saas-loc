@@ -93,4 +93,17 @@ public class LancamentoFinanceiro extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contrato_id")
     private Contrato contrato;
+
+    @Column(name = "centro_custo", length = 100)
+    private String centroCusto;
+
+    @Column(name = "forma_pagamento", length = 50)
+    private String formaPagamento;
+
+    @Column
+    @Builder.Default
+    private Integer parcelas = 1;
+
+    @Column(name = "comprovante_url", length = 500)
+    private String comprovanteUrl;
 }

@@ -94,17 +94,16 @@ public class ManutencaoService {
         manutencao = manutencaoRepository.save(manutencao);
 
         if (manutencao.getCusto() != null && manutencao.getCusto().compareTo(BigDecimal.ZERO) > 0) {
-            LancamentoRequest lancamento = new LancamentoRequest(
-                    TipoTransacao.DESPESA,
-                    manutencao.getCusto(),
-                    CategoriaFinanceira.MANUTENCAO,
-                    "Manutenção do veículo " + veiculo.getPlaca() + " - " + manutencao.getDescricao(),
-                    StatusPagamento.PAGO,
-                    LocalDate.now(),
-                    LocalDate.now(),
-                    veiculo.getId(),
-                    null
-            );
+            LancamentoRequest lancamento = LancamentoRequest.builder()
+                    .tipo(TipoTransacao.DESPESA)
+                    .valor(manutencao.getCusto())
+                    .categoria(CategoriaFinanceira.MANUTENCAO)
+                    .descricao("Manutenção do veículo " + veiculo.getPlaca() + " - " + manutencao.getDescricao())
+                    .status(StatusPagamento.PAGO)
+                    .dataVencimento(LocalDate.now())
+                    .dataPagamento(LocalDate.now())
+                    .veiculoId(veiculo.getId())
+                    .build();
             financeiroService.criarLancamento(lancamento);
             log.info("Despesa de oficina lançada no caixa para veículo {}.", veiculo.getPlaca());
         }

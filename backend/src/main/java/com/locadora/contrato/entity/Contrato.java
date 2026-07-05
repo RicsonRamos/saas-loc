@@ -107,4 +107,26 @@ public class Contrato extends BaseEntity {
     @Column(name = "km_excedente")
     @Builder.Default
     private Integer kmExcedente = 0;
+
+    @Column(name = "checklist_retirada_id")
+    private UUID checklistRetiradaId;
+
+    @Column(name = "checklist_devolucao_id")
+    private UUID checklistDevolucaoId;
+
+    @Column(nullable = false, precision = 19, scale = 4)
+    @Builder.Default
+    private BigDecimal multas = BigDecimal.ZERO;
+
+    @Column(length = 20)
+    private String combustivel;
+
+    @Column(columnDefinition = "TEXT")
+    private String acessorios;
+
+    @Column(columnDefinition = "TEXT")
+    private String observacoes;
+
+    @Column(name = "assinatura_url", length = 500)
+    private String assinaturaUrl;
 }

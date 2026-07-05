@@ -34,4 +34,11 @@ public class ContratoResponse {
     private Integer kmInicial;
     private Integer kmFinal;
     private Integer kmExcedente;
+    private UUID checklistRetiradaId;
+    private UUID checklistDevolucaoId;
+    private BigDecimal multas;
+    private String combustivel;
+    private String acessorios;
+    private String observacoes;
+    private String assinaturaUrl;
 }

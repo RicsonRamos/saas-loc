@@ -19,6 +19,7 @@ import java.util.UUID;
  * Payload para criação de uma transação (despesa ou receita).
  */
 @Getter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class LancamentoRequest {
@@ -48,4 +49,9 @@ public class LancamentoRequest {
     private UUID veiculoId;
     
     private UUID contratoId;
+
+    private String centroCusto;
+    private String formaPagamento;
+    private Integer parcelas;
+    private String comprovanteUrl;
 }

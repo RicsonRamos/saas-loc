@@ -65,4 +65,10 @@ public class ClienteRequest {
 
     @Size(max = 500)
     private String comprovanteResidenciaUrl;
+
+    @Size(max = 5)
+    private String cnhCategoria;
+
+    private Boolean bloqueado;
+    private String observacoes;
 }

@@ -76,4 +76,34 @@ public class Veiculo extends BaseEntity {
 
     @Column(name = "documento_url", length = 500)
     private String documentoUrl;
+
+    @Column(length = 20)
+    private String combustivel;
+
+    @Column(length = 20)
+    private String cambio;
+
+    @Column(name = "capacidade_tanque")
+    private Integer capacidadeTanque;
+
+    @Column(name = "proxima_revisao")
+    private LocalDate proximaRevisao;
+
+    @Column(name = "proxima_troca_oleo")
+    private LocalDate proximaTrocaOleo;
+
+    @Column(length = 100)
+    private String seguro;
+
+    @Column(length = 100)
+    private String ipva;
+
+    @Column(length = 100)
+    private String crlv;
+
+    @Column(length = 100)
+    private String licenciamento;
+
+    @Column(length = 50)
+    private String categoria;
 }

@@ -34,4 +34,9 @@ public class LancamentoResponse {
     private String veiculoPlaca;
 
     private UUID contratoId;
+
+    private String centroCusto;
+    private String formaPagamento;
+    private Integer parcelas;
+    private String comprovanteUrl;
 }

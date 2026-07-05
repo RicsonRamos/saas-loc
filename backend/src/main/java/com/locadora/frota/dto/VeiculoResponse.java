@@ -29,4 +29,14 @@ public class VeiculoResponse {
     private BigDecimal valorCompra;
     private LocalDate dataCompra;
     private String documentoUrl;
+    private String combustivel;
+    private String cambio;
+    private Integer capacidadeTanque;
+    private LocalDate proximaRevisao;
+    private LocalDate proximaTrocaOleo;
+    private String seguro;
+    private String ipva;
+    private String crlv;
+    private String licenciamento;
+    private String categoria;
 }
