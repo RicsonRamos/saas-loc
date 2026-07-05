@@ -631,8 +631,8 @@ curl http://localhost:8080/actuator/health
 - [x] **EPIC 4:** Contratos de Locação
 - [x] **EPIC 5:** Financeiro Básico
 - [x] **EPIC 6:** Manutenção
-- [ ] **EPIC 7:** Dashboards
-- [ ] HTTPS configurado (NGINX + Certbot)
+- [x] **EPIC 7:** Dashboard
+- [ ] **EPIC 8:** Relatórios
 - [ ] CORS restrito ao domínio real
 - [ ] Backup automático do banco
 - [ ] Monitoramento e alertas
@@ -653,7 +653,7 @@ O desenvolvimento segue a ordem definida no [backlog técnico](docs/backlog-tecn
 | 4 | Contratos | ✅ Concluído | Locação, km, devolução, danos |
 | 5 | Financeiro | ✅ Concluído | Receitas, despesas, fluxo de caixa |
 | 6 | Manutenção | ✅ Concluído | Preventiva/corretiva, custos |
-| 7 | Dashboard | ⏳ | KPIs, indicadores, gráficos |
+| 7 | Dashboard | ✅ Concluído | KPIs, indicadores, gráficos |
 | 8 | Relatórios | ⏳ | PDF, Excel, filtros |
 | 9 | Segurança Reforçada | ⏳ | Auditoria, rate limiting, hardening |
 | 10 | Infraestrutura e Deploy | ⏳ | CI/CD, HTTPS, monitoramento |

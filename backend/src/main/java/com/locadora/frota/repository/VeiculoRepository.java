@@ -1,5 +1,6 @@
 package com.locadora.frota.repository;
 
+import com.locadora.frota.entity.StatusVeiculo;
 import com.locadora.frota.entity.Veiculo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,4 +24,8 @@ public interface VeiculoRepository extends JpaRepository<Veiculo, UUID> {
     boolean existsByPlacaAndTenantIdAndDeletedAtIsNull(String placa, UUID tenantId);
 
     boolean existsByChassiAndTenantIdAndDeletedAtIsNull(String chassi, UUID tenantId);
+
+    long countByTenantIdAndDeletedAtIsNull(UUID tenantId);
+
+    long countByTenantIdAndStatusAndDeletedAtIsNull(UUID tenantId, StatusVeiculo status);
 }
