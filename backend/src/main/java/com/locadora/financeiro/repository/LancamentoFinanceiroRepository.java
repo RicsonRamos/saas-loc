@@ -74,4 +74,10 @@ public interface LancamentoFinanceiroRepository extends JpaRepository<Lancamento
            "WHERE l.tenantId = :tenantId AND l.status = 'PAGO' AND l.deletedAt IS NULL " +
            "GROUP BY v.id, v.placa, v.modelo")
     List<RentabilidadeVeiculoProjection> getRentabilidadeVeiculos(@Param("tenantId") UUID tenantId);
+
+    /**
+     * Busca os lançamentos de um determinado período para geração de relatórios físicos.
+     */
+    List<LancamentoFinanceiro> findByTenantIdAndDataPagamentoBetweenAndDeletedAtIsNullOrderByDataPagamentoDesc(
+            UUID tenantId, LocalDate inicio, LocalDate fim);
 }
