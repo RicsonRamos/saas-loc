@@ -1,4 +1,4 @@
-name: Deploy to Production
+name: CI/CD Pipeline
 
 on:
   push:
@@ -6,9 +6,28 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-test:
     runs-on: ubuntu-latest
-    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+          
+      - name: Build and Test Backend
+        working-directory: ./backend
+        run: mvn clean verify
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    # Só tenta fazer o deploy se as chaves SSH estiverem configuradas nos Secrets do repositório
+    if: "${{ secrets.VPS_HOST != '' && secrets.VPS_USERNAME != '' }}"
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
@@ -35,5 +54,5 @@ jobs:
           docker-compose -f docker-compose.prod.yml build
           docker-compose -f docker-compose.prod.yml up -d
           
-          # Limpa imagens antigas não utilizadas (Economia de disco na VPS)
+          # Limpa imagens antigas não utilizadas
           docker image prune -f
