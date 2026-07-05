@@ -43,7 +43,7 @@ public class VeiculoController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
+    @PreAuthorize("hasAuthority('VEICULO_CADASTRAR')")
     @Operation(summary = "Criar veículo", description = "Cadastra um novo veículo na frota")
     public ResponseEntity<ApiResponse<VeiculoResponse>> criar(@Valid @RequestBody VeiculoRequest request) {
         VeiculoResponse response = veiculoService.criar(request);
@@ -67,7 +67,7 @@ public class VeiculoController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
+    @PreAuthorize("hasAuthority('VEICULO_CADASTRAR')")
     @Operation(summary = "Atualizar veículo", description = "Atualiza os dados de um veículo existente")
     public ResponseEntity<ApiResponse<VeiculoResponse>> atualizar(@PathVariable UUID id, 
                                                                   @Valid @RequestBody VeiculoRequest request) {
@@ -76,7 +76,7 @@ public class VeiculoController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
+    @PreAuthorize("hasAuthority('VEICULO_EXCLUIR')")
     @Operation(summary = "Excluir veículo", description = "Realiza soft-delete de um veículo (se não estiver locado)")
     public ResponseEntity<ApiResponse<Void>> excluir(@PathVariable UUID id, HttpServletRequest request) {
         String token = request.getHeader("Authorization").substring(7);

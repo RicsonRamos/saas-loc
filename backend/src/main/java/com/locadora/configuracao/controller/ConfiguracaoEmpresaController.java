@@ -33,7 +33,7 @@ public class ConfiguracaoEmpresaController {
 
     @Operation(summary = "Atualiza as configurações globais da empresa")
     @PutMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('CONFIGURACAO_GERENCIAR')")
     public ResponseEntity<ConfiguracaoEmpresaDTO> atualizar(@Valid @RequestBody ConfiguracaoEmpresaDTO dto) {
         return ResponseEntity.ok(service.atualizar(dto));
     }

@@ -35,10 +35,10 @@ public class FinanceiroController {
     }
 
     @PostMapping("/lancamentos")
-    @PreAuthorize("hasAnyRole('ADMIN', 'FINANCEIRO')")
+    @PreAuthorize("hasAuthority('FINANCEIRO_EDITAR')")
     @Operation(summary = "Criar lançamento", description = "Registra uma transação manual (Despesa de oficina, impostos, etc)")
     public ResponseEntity<ApiResponse<LancamentoResponse>> criarLancamento(@Valid @RequestBody LancamentoRequest request) {
-        LancamentoResponse response = financeiroService.criar(request);
+        LancamentoResponse response = financeiroService.criarLancamento(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response, "Lançamento financeiro registrado"));
     }
 

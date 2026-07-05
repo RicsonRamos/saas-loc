@@ -76,6 +76,7 @@ public class AuthService {
                     .refreshToken(refreshToken)
                     .tokenType("Bearer")
                     .expiresIn(accessExpirationMs / 1000)
+                    .mustChangePassword(usuario.getMustChangePassword())
                     .build();
 
         } catch (AuthenticationException e) {
@@ -109,6 +110,7 @@ public class AuthService {
                 .refreshToken(newRefreshToken)
                 .tokenType("Bearer")
                 .expiresIn(accessExpirationMs / 1000)
+                .mustChangePassword(usuario.getMustChangePassword())
                 .build();
     }
 }

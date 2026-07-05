@@ -13,4 +13,5 @@ public class TokenResponse {
     private String refreshToken;
     private String tokenType;
     private long expiresIn;
+    private Boolean mustChangePassword;
 }

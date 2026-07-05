@@ -23,5 +23,6 @@ public class UsuarioResponse {
     private String email;
     private Boolean ativo;
     private Set<Role> roles;
+    private Boolean mustChangePassword;
     private LocalDateTime createdAt;
 }

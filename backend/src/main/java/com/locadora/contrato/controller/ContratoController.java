@@ -46,7 +46,7 @@ public class ContratoController {
     @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'OPERADOR')")
     @Operation(summary = "Criar contrato", description = "Inicia uma nova locação (Retirada de veículo)")
     public ResponseEntity<ApiResponse<ContratoResponse>> criar(@Valid @RequestBody ContratoRequest request) {
-        ContratoResponse response = contratoService.criar(request);
+        ContratoResponse response = contratoService.abrirContrato(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response, "Contrato gerado com sucesso. O veículo foi reservado."));
     }
 

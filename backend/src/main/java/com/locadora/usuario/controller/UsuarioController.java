@@ -45,8 +45,8 @@ public class UsuarioController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Criar usuário", description = "Cria um novo usuário na empresa (Apenas ADMIN)")
+    @PreAuthorize("hasAuthority('USUARIO_CADASTRAR')")
+    @Operation(summary = "Criar usuário", description = "Cria um novo usuário na empresa")
     public ResponseEntity<ApiResponse<UsuarioResponse>> criar(@Valid @RequestBody UsuarioRequest request) {
         UsuarioResponse response = usuarioService.criar(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response, "Usuário criado com sucesso"));
@@ -69,8 +69,8 @@ public class UsuarioController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Atualizar usuário", description = "Atualiza dados de um usuário (Apenas ADMIN)")
+    @PreAuthorize("hasAuthority('USUARIO_CADASTRAR')")
+    @Operation(summary = "Atualizar usuário", description = "Atualiza dados de um usuário")
     public ResponseEntity<ApiResponse<UsuarioResponse>> atualizar(@PathVariable UUID id, 
                                                                   @Valid @RequestBody UsuarioUpdateRequest request) {
         UsuarioResponse response = usuarioService.atualizar(id, request);
@@ -78,7 +78,7 @@ public class UsuarioController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('USUARIO_CADASTRAR')")
     @Operation(summary = "Excluir usuário", description = "Realiza soft-delete de um usuário (Apenas ADMIN)")
     public ResponseEntity<ApiResponse<Void>> excluir(@PathVariable UUID id, HttpServletRequest request) {
         // Extrair o ID do usuário atual do header Authorization (já validado pelo filtro)
