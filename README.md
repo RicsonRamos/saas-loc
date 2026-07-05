@@ -634,7 +634,7 @@ curl http://localhost:8080/actuator/health
 - [x] **EPIC 7:** Dashboard
 - [x] **EPIC 8:** Relatórios
 - [x] **EPIC 9:** Segurança Reforçada
-- [ ] **EPIC 10:** Infraestrutura e Deploy
+- [x] **EPIC 10:** Infraestrutura e Deploy
 - [ ] CORS restrito ao domínio real
 - [ ] Backup automático do banco
 - [ ] Monitoramento e alertas
@@ -658,7 +658,7 @@ O desenvolvimento segue a ordem definida no [backlog técnico](docs/backlog-tecn
 | 7 | Dashboard | ✅ Concluído | KPIs, indicadores, gráficos |
 | 8 | Relatórios | ✅ Concluído | PDF, Excel, filtros |
 | 9 | Segurança Reforçada | ✅ Concluído | Auditoria, rate limiting, hardening |
-| 10 | Infraestrutura e Deploy | ⏳ | CI/CD, HTTPS, monitoramento |
+| 10 | Infraestrutura e Deploy | ✅ Concluído | CI/CD, HTTPS, monitoramento |
 
 > **Nota:** EPICs 2 e 3 estão invertidos propositalmente — a frota é o núcleo do produto e deve existir antes dos clientes.
 

@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-locadora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-locadora_pwd}
+      POSTGRES_DB: ${POSTGRES_DB:-saas_locadora}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - locadora-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-saas_locadora}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-locadora}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-locadora_pwd}
+      - APP_JWT_SECRET=${APP_JWT_SECRET}
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - locadora-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks:
+      - locadora-network
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro # Mapeamento para os certificados do Certbot
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    networks:
+      - locadora-network
+
+networks:
+  locadora-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
