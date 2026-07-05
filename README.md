@@ -353,12 +353,22 @@ Resposta:
 }
 ```
 
-Use o `accessToken` em todas as requisições autenticadas:
+## 📖 Como Utilizar
 
-```bash
-curl -H "Authorization: Bearer eyJhbGci..." \
-  http://localhost:8080/api/v1/algum-recurso
-```
+A API REST é baseada em JSON e protegida via JWT.
+
+### Autenticação (Obrigatória)
+Todos os endpoints (exceto a autenticação) exigem o cabeçalho:
+`Authorization: Bearer <seu_token_jwt>`
+
+### Ordem Lógica de Teste
+Para testar o núcleo operacional da locadora (Contratos), siga estes passos na ordem:
+
+1. **Faça o login** com as credenciais do `ADMIN` que injetamos via Migration (`V2`). (Endpoint `/api/v1/auth/login`).
+2. **Cadastre um Cliente (PF/PJ)**: `/api/v1/clientes` usando o método `POST`.
+3. **Cadastre um Veículo**: `/api/v1/veiculos` usando o método `POST`.
+4. **Crie um Contrato**: Mande um `POST` para `/api/v1/contratos` passando os IDs do cliente e veículo. O status do veículo passará automaticamente para `LOCADO`.
+5. **Encerre o Contrato (Devolução)**: Mande um `PUT` para `/api/v1/contratos/{id}/encerrar` informando o hodômetro final. O veículo retornará ao status `DISPONIVEL` e o KM será atualizado na frota.
 
 ---
 
@@ -632,9 +642,9 @@ O desenvolvimento segue a ordem definida no [backlog técnico](docs/backlog-tecn
 |---|------|--------|-----------|
 | 0 | Base do Projeto | ✅ Concluído | Estrutura, Docker, JWT, multi-tenant |
 | 1 | Autenticação e Multi-tenant | 🔜 Próximo | RBAC completo, tenant resolution |
-| 3 | Frota (Veículos) | ⏳ | CRUD veículos, status, documentação |
-| 2 | Cadastro de Clientes | ⏳ | PF/PJ, documentos, histórico |
-| 4 | Contratos | ⏳ | Locação, km, devolução, danos |
+| 2 | Cadastro de Clientes | ✅ Concluído | Clientes, validação, persistência |
+| 3 | Frota (Veículos) | ✅ Concluído | CRUD veículos, status, documentação |
+| 4 | Contratos | ✅ Concluído | Locação, km, devolução, danos |
 | 5 | Financeiro | ⏳ | Receitas, despesas, fluxo de caixa |
 | 6 | Manutenção | ⏳ | Preventiva/corretiva, custos |
 | 7 | Dashboard | ⏳ | KPIs, indicadores, gráficos |
