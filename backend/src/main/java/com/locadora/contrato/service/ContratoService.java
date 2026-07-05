@@ -12,6 +12,11 @@ import com.locadora.contrato.entity.Contrato;
 import com.locadora.contrato.entity.StatusContrato;
 import com.locadora.contrato.mapper.ContratoMapper;
 import com.locadora.contrato.repository.ContratoRepository;
+import com.locadora.financeiro.dto.LancamentoRequest;
+import com.locadora.financeiro.entity.CategoriaFinanceira;
+import com.locadora.financeiro.entity.StatusPagamento;
+import com.locadora.financeiro.entity.TipoTransacao;
+import com.locadora.financeiro.service.FinanceiroService;
 import com.locadora.frota.entity.StatusVeiculo;
 import com.locadora.frota.entity.Veiculo;
 import com.locadora.frota.repository.VeiculoRepository;
@@ -24,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -40,15 +46,18 @@ public class ContratoService {
     private final ContratoMapper contratoMapper;
     private final ClienteRepository clienteRepository;
     private final VeiculoRepository veiculoRepository;
+    private final FinanceiroService financeiroService;
 
     public ContratoService(ContratoRepository contratoRepository, 
                            ContratoMapper contratoMapper, 
                            ClienteRepository clienteRepository, 
-                           VeiculoRepository veiculoRepository) {
+                           VeiculoRepository veiculoRepository,
+                           FinanceiroService financeiroService) {
         this.contratoRepository = contratoRepository;
         this.contratoMapper = contratoMapper;
         this.clienteRepository = clienteRepository;
         this.veiculoRepository = veiculoRepository;
+        this.financeiroService = financeiroService;
     }
 
     /**
@@ -164,6 +173,22 @@ public class ContratoService {
 
         // 3. Persistir e finalizar
         contrato = contratoRepository.save(contrato);
+
+        // 4. Integração Financeira: Lança a receita no caixa automaticamente
+        BigDecimal valorAcerto = contrato.getValorTotal().add(contrato.getValorAdicional());
+        LancamentoRequest lancamentoRequest = new LancamentoRequest(
+                TipoTransacao.RECEITA,
+                valorAcerto,
+                CategoriaFinanceira.ALUGUEL,
+                "Recebimento referente ao contrato " + contrato.getId(),
+                StatusPagamento.PAGO,
+                LocalDate.now(),
+                LocalDate.now(),
+                veiculo.getId(),
+                contrato.getId()
+        );
+        financeiroService.criar(lancamentoRequest);
+
         log.info("Contrato {} encerrado com sucesso. Veículo {} devolvido ao pátio. (Tenant: {})", 
                  contrato.getId(), veiculo.getPlaca(), tenantId);
 
