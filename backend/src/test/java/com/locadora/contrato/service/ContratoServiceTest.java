@@ -13,20 +13,24 @@ import com.locadora.financeiro.service.FinanceiroService;
 import com.locadora.frota.entity.StatusVeiculo;
 import com.locadora.frota.entity.Veiculo;
 import com.locadora.frota.repository.VeiculoRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,11 +44,17 @@ class ContratoServiceTest {
     @Mock private FinanceiroService financeiroService;
     @InjectMocks private ContratoService contratoService;
 
+    private MockedStatic<TenantContext> tenantContextMock;
+    private final UUID TENANT_ID = UUID.randomUUID();
+
     private Cliente cliente;
     private Veiculo veiculo;
 
     @BeforeEach
     void setUp() {
+        tenantContextMock = mockStatic(TenantContext.class);
+        tenantContextMock.when(TenantContext::getTenantId).thenReturn(TENANT_ID);
+
         cliente = new Cliente();
         cliente.setId(UUID.randomUUID());
 
@@ -54,34 +64,39 @@ class ContratoServiceTest {
         veiculo.setQuilometragem(10000);
     }
 
+    @AfterEach
+    void tearDown() {
+        tenantContextMock.close();
+    }
+
     @Test
     void naoDeveAbrirContratoSeVeiculoIndisponivel() {
         veiculo.setStatus(StatusVeiculo.LOCADO);
 
-        ContratoRequest request = new ContratoRequest();
-        request.setVeiculoId(veiculo.getId());
-        request.setClienteId(cliente.getId());
+        ContratoRequest request = new ContratoRequest(
+                cliente.getId(), veiculo.getId(), LocalDateTime.now(), LocalDateTime.now().plusDays(5),
+                new BigDecimal("500.00"), BigDecimal.ZERO, null, null, BigDecimal.ZERO, "Cheio", "Nenhum", "", ""
+        );
 
-        when(clienteRepository.findByIdAndDeletedAtIsNull(cliente.getId())).thenReturn(Optional.of(cliente));
-        when(veiculoRepository.findByIdAndDeletedAtIsNull(veiculo.getId())).thenReturn(Optional.of(veiculo));
+        when(clienteRepository.findByIdAndTenantIdAndDeletedAtIsNull(cliente.getId(), TENANT_ID)).thenReturn(Optional.of(cliente));
+        when(veiculoRepository.findByIdAndTenantIdAndDeletedAtIsNull(veiculo.getId(), TENANT_ID)).thenReturn(Optional.of(veiculo));
 
         assertThrows(BusinessException.class, () -> contratoService.abrirContrato(request));
     }
 
     @Test
     void deveAbrirContratoEAlterarStatusVeiculo() {
-        ContratoRequest request = new ContratoRequest();
-        request.setVeiculoId(veiculo.getId());
-        request.setClienteId(cliente.getId());
-        request.setDataPrevistaDevolucao(LocalDate.now().plusDays(5));
-        request.setValorDiaria(new BigDecimal("100.00"));
+        ContratoRequest request = new ContratoRequest(
+                cliente.getId(), veiculo.getId(), LocalDateTime.now(), LocalDateTime.now().plusDays(5),
+                new BigDecimal("500.00"), BigDecimal.ZERO, null, null, BigDecimal.ZERO, "Cheio", "Nenhum", "", ""
+        );
 
         Contrato contratoSalvo = new Contrato();
         contratoSalvo.setId(UUID.randomUUID());
         contratoSalvo.setStatus(StatusContrato.ATIVO);
 
-        when(clienteRepository.findByIdAndDeletedAtIsNull(cliente.getId())).thenReturn(Optional.of(cliente));
-        when(veiculoRepository.findByIdAndDeletedAtIsNull(veiculo.getId())).thenReturn(Optional.of(veiculo));
+        when(clienteRepository.findByIdAndTenantIdAndDeletedAtIsNull(cliente.getId(), TENANT_ID)).thenReturn(Optional.of(cliente));
+        when(veiculoRepository.findByIdAndTenantIdAndDeletedAtIsNull(veiculo.getId(), TENANT_ID)).thenReturn(Optional.of(veiculo));
         when(contratoMapper.toEntity(request)).thenReturn(new Contrato());
         when(contratoRepository.save(any(Contrato.class))).thenReturn(contratoSalvo);
         when(contratoMapper.toResponse(any())).thenReturn(new ContratoResponse());

@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
-import com.locadora.shared.tenant.TenantContext;
 
 @Service
 public class DocumentoVeiculoService {
@@ -38,12 +37,11 @@ public class DocumentoVeiculoService {
 
     @Transactional
     public DocumentoVeiculoResponse criar(DocumentoVeiculoRequest request) {
-        UUID tenantId = TenantContext.getTenantId();
-        Veiculo veiculo = veiculoRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getVeiculoId(), tenantId)
+        Veiculo veiculo = veiculoRepository.findByIdAndDeletedAtIsNull(request.getVeiculoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Veículo", "id", request.getVeiculoId()));
 
         // Valida se já existe um documento ativo do mesmo tipo
-        repository.findByVeiculoIdAndTipoAndTenantIdAndDeletedAtIsNull(veiculo.getId(), request.getTipo(), tenantId)
+        repository.findByVeiculoIdAndTipoAndDeletedAtIsNull(veiculo.getId(), request.getTipo())
                 .ifPresent(existing -> {
                     throw new BusinessException("Já existe um documento de " + request.getTipo() + " ativo para este veículo.");
                 });
@@ -59,8 +57,7 @@ public class DocumentoVeiculoService {
 
     @Transactional
     public DocumentoVeiculoResponse atualizar(UUID id, DocumentoVeiculoRequest request) {
-        UUID tenantId = TenantContext.getTenantId();
-        DocumentoVeiculo documento = repository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
+        DocumentoVeiculo documento = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("DocumentoVeiculo", "id", id));
 
         mapper.updateEntity(request, documento);
@@ -72,8 +69,7 @@ public class DocumentoVeiculoService {
 
     @Transactional
     public void excluir(UUID id, UUID currentUserId) {
-        UUID tenantId = TenantContext.getTenantId();
-        DocumentoVeiculo documento = repository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
+        DocumentoVeiculo documento = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("DocumentoVeiculo", "id", id));
 
         documento.softDelete(currentUserId);
@@ -83,16 +79,14 @@ public class DocumentoVeiculoService {
 
     @Transactional(readOnly = true)
     public List<DocumentoVeiculoResponse> listarPorVeiculo(UUID veiculoId) {
-        UUID tenantId = TenantContext.getTenantId();
-        return repository.findByVeiculoIdAndTenantIdAndDeletedAtIsNull(veiculoId, tenantId).stream()
+        return repository.findByVeiculoIdAndDeletedAtIsNull(veiculoId).stream()
                 .map(mapper::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public DocumentoVeiculoResponse buscarPorId(UUID id) {
-        UUID tenantId = TenantContext.getTenantId();
-        DocumentoVeiculo documento = repository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
+        DocumentoVeiculo documento = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("DocumentoVeiculo", "id", id));
         return mapper.toResponse(documento);
     }

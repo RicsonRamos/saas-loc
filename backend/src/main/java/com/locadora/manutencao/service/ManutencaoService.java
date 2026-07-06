@@ -29,7 +29,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-import com.locadora.shared.tenant.TenantContext;
 
 /**
  * Serviço de Manutenção — Multi-Tenant.
@@ -56,8 +55,7 @@ public class ManutencaoService {
 
     @Transactional
     public ManutencaoResponse registrarManutencao(ManutencaoRequest request) {
-        UUID tenantId = TenantContext.getTenantId();
-        Veiculo veiculo = veiculoRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getVeiculoId(), tenantId)
+        Veiculo veiculo = veiculoRepository.findByIdAndDeletedAtIsNull(request.getVeiculoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Veículo", "id", request.getVeiculoId()));
 
         if (veiculo.getStatus() == StatusVeiculo.LOCADO) {
@@ -80,8 +78,7 @@ public class ManutencaoService {
 
     @Transactional
     public ManutencaoResponse concluirManutencao(UUID id, ConclusaoManutencaoRequest request) {
-        UUID tenantId = TenantContext.getTenantId();
-        Manutencao manutencao = manutencaoRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
+        Manutencao manutencao = manutencaoRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Manutenção", "id", id));
 
         manutencao.setDataFim(LocalDate.now());
@@ -117,8 +114,7 @@ public class ManutencaoService {
 
     @Transactional(readOnly = true)
     public PagedResponse<ManutencaoResponse> listar(Pageable pageable) {
-        UUID tenantId = TenantContext.getTenantId();
-        Page<Manutencao> page = manutencaoRepository.findByTenantIdAndDeletedAtIsNull(tenantId, pageable);
+        Page<Manutencao> page = manutencaoRepository.findByTenantIdAndDeletedAtIsNull(pageable);
         List<ManutencaoResponse> data = page.getContent().stream()
                 .map(manutencaoMapper::toResponse)
                 .toList();
@@ -127,8 +123,7 @@ public class ManutencaoService {
 
     @Transactional(readOnly = true)
     public PagedResponse<ManutencaoResponse> listarPorVeiculo(UUID veiculoId, Pageable pageable) {
-        UUID tenantId = TenantContext.getTenantId();
-        Page<Manutencao> page = manutencaoRepository.findByVeiculoIdAndTenantIdAndDeletedAtIsNull(veiculoId, tenantId, pageable);
+        Page<Manutencao> page = manutencaoRepository.findByVeiculoIdAndDeletedAtIsNull(veiculoId, pageable);
         List<ManutencaoResponse> data = page.getContent().stream()
                 .map(manutencaoMapper::toResponse)
                 .toList();

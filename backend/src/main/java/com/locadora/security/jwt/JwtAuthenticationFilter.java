@@ -45,18 +45,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = extractToken(request);
 
-            if (jwt != null && jwtTokenProvider.validateToken(jwt)) {
-                String tokenType = jwtTokenProvider.getTokenType(jwt);
-                if (!"ACCESS".equals(tokenType)) {
-                    filterChain.doFilter(request, response);
-                    return;
-                }
-
-                // Configura o TenantContext
-                java.util.UUID tenantId = jwtTokenProvider.getTenantIdFromToken(jwt);
-                if (tenantId != null) {
-                    com.locadora.shared.tenant.TenantContext.setTenantId(tenantId);
-                }
+                if (jwt != null && jwtTokenProvider.validateToken(jwt)) {
 
                 String email = jwtTokenProvider.getEmailFromToken(jwt);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
@@ -71,8 +60,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (Exception e) {
             log.error("Erro ao processar autenticação JWT: {}", e.getMessage());
             filterChain.doFilter(request, response);
-        } finally {
-            com.locadora.shared.tenant.TenantContext.clear();
         }
     }
 

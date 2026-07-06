@@ -39,7 +39,7 @@ public class ManutencaoController {
     @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     @Operation(summary = "Enviar para oficina", description = "Registra o envio do carro, bloqueando seu status para locação")
     public ResponseEntity<ApiResponse<ManutencaoResponse>> iniciar(@Valid @RequestBody ManutencaoRequest request) {
-        ManutencaoResponse response = manutencaoService.iniciar(request);
+        ManutencaoResponse response = manutencaoService.registrarManutencao(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response, "Carro enviado para manutenção com sucesso."));
     }
 
@@ -48,7 +48,7 @@ public class ManutencaoController {
     @Operation(summary = "Concluir serviço", description = "Libera o veículo de volta à frota e gera uma despesa no financeiro")
     public ResponseEntity<ApiResponse<ManutencaoResponse>> concluir(@PathVariable UUID id, 
                                                                     @Valid @RequestBody ConclusaoManutencaoRequest request) {
-        ManutencaoResponse response = manutencaoService.concluir(id, request);
+        ManutencaoResponse response = manutencaoService.concluirManutencao(id, request);
         return ResponseEntity.ok(ApiResponse.of(response, "Manutenção concluída e veículo liberado."));
     }
 

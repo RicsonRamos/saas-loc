@@ -4,6 +4,8 @@ import com.locadora.usuario.entity.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -14,7 +16,9 @@ import java.util.UUID;
  * Nunca expõe a senha ou dados internos da entidade.
  */
 @Getter
+@Setter
 @Builder
+@NoArgsConstructor
 @AllArgsConstructor
 public class UsuarioResponse {
 

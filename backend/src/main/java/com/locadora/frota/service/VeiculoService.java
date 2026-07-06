@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
-import com.locadora.shared.tenant.TenantContext;
 
 /**
  * Serviço de Frota (Veículos) — Multi-Tenant.
@@ -52,7 +51,7 @@ public class VeiculoService {
 
     @Transactional(readOnly = true)
     public PagedResponse<VeiculoResponse> listar(Pageable pageable) {
-        Page<Veiculo> page = veiculoRepository.findByTenantIdAndDeletedAtIsNull(TenantContext.getTenantId(), pageable);
+        Page<Veiculo> page = veiculoRepository.findAllByDeletedAtIsNull(pageable);
         List<VeiculoResponse> data = page.getContent().stream()
                 .map(veiculoMapper::toResponse)
                 .toList();
@@ -93,7 +92,7 @@ public class VeiculoService {
     }
 
     private Veiculo obterVeiculoPorId(UUID id) {
-        return veiculoRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, TenantContext.getTenantId())
+        return veiculoRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Veículo", "id", id));
     }
 
@@ -107,16 +106,14 @@ public class VeiculoService {
     }
 
     private boolean existeOutroComPlaca(String placa, UUID idIgnorado) {
-        UUID tenantId = TenantContext.getTenantId();
-        return veiculoRepository.findByTenantIdAndDeletedAtIsNull(tenantId, Pageable.unpaged())
+        return veiculoRepository.findAllByDeletedAtIsNull(Pageable.unpaged())
                 .stream()
                 .filter(v -> v.getPlaca().equalsIgnoreCase(placa))
                 .anyMatch(v -> !v.getId().equals(idIgnorado));
     }
 
     private boolean existeOutroComChassi(String chassi, UUID idIgnorado) {
-        UUID tenantId = TenantContext.getTenantId();
-        return veiculoRepository.findByTenantIdAndDeletedAtIsNull(tenantId, Pageable.unpaged())
+        return veiculoRepository.findAllByDeletedAtIsNull(Pageable.unpaged())
                 .stream()
                 .filter(v -> v.getChassi().equalsIgnoreCase(chassi))
                 .anyMatch(v -> !v.getId().equals(idIgnorado));

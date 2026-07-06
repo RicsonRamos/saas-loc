@@ -37,25 +37,23 @@ public class JwtTokenProvider {
         this.refreshExpirationMs = refreshExpirationMs;
     }
 
-    public String generateAccessToken(UUID userId, String email, UUID tenantId) {
-        return buildToken(userId, email, tenantId, accessExpirationMs, "ACCESS");
+    public String generateAccessToken(UUID userId, String username) {
+        return generateToken(userId, username, accessExpirationMs);
     }
 
-    public String generateRefreshToken(UUID userId, String email, UUID tenantId) {
-        return buildToken(userId, email, tenantId, refreshExpirationMs, "REFRESH");
+    public String generateRefreshToken(UUID userId, String username) {
+        return generateToken(userId, username, refreshExpirationMs);
     }
 
-    private String buildToken(UUID userId, String email, UUID tenantId, long expirationMs, String type) {
+    private String generateToken(UUID userId, String username, long expirationMs) {
         Date now = new Date();
-        Date expiry = new Date(now.getTime() + expirationMs);
+        Date expiryDate = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
                 .subject(userId.toString())
-                .claim("email", email)
-                .claim("tenantId", tenantId != null ? tenantId.toString() : null)
-                .claim("type", type)
+                .claim("email", username)
                 .issuedAt(now)
-                .expiration(expiry)
+                .expiration(expiryDate)
                 .signWith(key)
                 .compact();
     }

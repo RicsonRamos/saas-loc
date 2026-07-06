@@ -8,11 +8,13 @@ import com.locadora.cliente.repository.ClienteRepository;
 import com.locadora.common.exception.ResourceNotFoundException;
 import com.locadora.frota.repository.DocumentoVeiculoRepository;
 import com.locadora.frota.repository.VeiculoRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -21,6 +23,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,10 +35,16 @@ class AlertaServiceTest {
     @Mock private DocumentoVeiculoRepository documentoVeiculoRepository;
     @InjectMocks private AlertaService service;
 
+    private MockedStatic<TenantContext> tenantContextMock;
+    private final UUID TENANT_ID = UUID.randomUUID();
+
     private Alerta alerta;
 
     @BeforeEach
     void setUp() {
+        tenantContextMock = mockStatic(TenantContext.class);
+        tenantContextMock.when(TenantContext::getTenantId).thenReturn(TENANT_ID);
+
         alerta = new Alerta();
         alerta.setId(UUID.randomUUID());
         alerta.setTipo(TipoAlerta.CNH);
@@ -44,9 +53,14 @@ class AlertaServiceTest {
         alerta.setLido(false);
     }
 
+    @AfterEach
+    void tearDown() {
+        tenantContextMock.close();
+    }
+
     @Test
     void deveObterAlertasPendentes() {
-        when(repository.findByLidoFalseAndDeletedAtIsNullOrderByDataAlertaDesc()).thenReturn(List.of(alerta));
+        when(repository.findByTenantIdAndLidoFalseAndDeletedAtIsNullOrderByDataAlertaDesc(TENANT_ID)).thenReturn(List.of(alerta));
 
         List<AlertaResponse> response = service.obterPendentes();
 
@@ -57,7 +71,7 @@ class AlertaServiceTest {
 
     @Test
     void deveMarcarComoLidoComSucesso() {
-        when(repository.findByIdAndDeletedAtIsNull(alerta.getId())).thenReturn(Optional.of(alerta));
+        when(repository.findByIdAndTenantIdAndDeletedAtIsNull(alerta.getId(), TENANT_ID)).thenReturn(Optional.of(alerta));
 
         service.marcarComoLido(alerta.getId());
 
@@ -68,7 +82,7 @@ class AlertaServiceTest {
     @Test
     void deveLancarExcecaoAoMarcarComoLidoAlertaInexistente() {
         UUID id = UUID.randomUUID();
-        when(repository.findByIdAndDeletedAtIsNull(id)).thenReturn(Optional.empty());
+        when(repository.findByIdAndTenantIdAndDeletedAtIsNull(id, TENANT_ID)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> service.marcarComoLido(id));
     }
@@ -76,7 +90,7 @@ class AlertaServiceTest {
     @Test
     void deveCriarAlertaSeNaoExistirPendente() {
         UUID clienteId = UUID.randomUUID();
-        when(repository.existsByTipoAndEntidadeIdAndLidoFalseAndDeletedAtIsNull(TipoAlerta.CNH, clienteId)).thenReturn(false);
+        when(repository.existsByTipoAndEntidadeIdAndLidoFalseAndTenantIdAndDeletedAtIsNull(TipoAlerta.CNH, clienteId, TENANT_ID)).thenReturn(false);
 
         service.criarAlerta(TipoAlerta.CNH, "Título", "Descrição", clienteId);
 
@@ -86,7 +100,7 @@ class AlertaServiceTest {
     @Test
     void naoDeveCriarAlertaSeJaExistirPendente() {
         UUID clienteId = UUID.randomUUID();
-        when(repository.existsByTipoAndEntidadeIdAndLidoFalseAndDeletedAtIsNull(TipoAlerta.CNH, clienteId)).thenReturn(true);
+        when(repository.existsByTipoAndEntidadeIdAndLidoFalseAndTenantIdAndDeletedAtIsNull(TipoAlerta.CNH, clienteId, TENANT_ID)).thenReturn(true);
 
         service.criarAlerta(TipoAlerta.CNH, "Título", "Descrição", clienteId);
 

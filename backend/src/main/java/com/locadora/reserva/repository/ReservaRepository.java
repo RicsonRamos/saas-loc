@@ -17,23 +17,22 @@ import java.util.UUID;
 @Repository
 public interface ReservaRepository extends JpaRepository<Reserva, UUID> {
 
-    Page<Reserva> findByTenantIdAndDeletedAtIsNull(UUID tenantId, Pageable pageable);
+    Page<Reserva> findByTenantIdAndDeletedAtIsNull(Pageable pageable);
 
-    Optional<Reserva> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
+    Optional<Reserva> findByIdAndDeletedAtIsNull(UUID id);
 
     @Query("SELECT COUNT(r) > 0 FROM Reserva r WHERE r.veiculo.id = :veiculoId " +
            "AND r.status IN ('RESERVADO', 'CONFIRMADO') " +
            "AND r.deletedAt IS NULL " +
-           "AND r.tenantId = :tenantId " +
+           " " +
            "AND r.dataInicio < :fim AND r.dataFim > :inicio " +
            "AND (:reservaId IS NULL OR r.id <> :reservaId)")
     boolean existsConflict(
             @Param("veiculoId") UUID veiculoId,
             @Param("inicio") LocalDateTime inicio,
             @Param("fim") LocalDateTime fim,
-            @Param("reservaId") UUID reservaId,
-            @Param("tenantId") UUID tenantId
+            @Param("reservaId") UUID reservaId
     );
 
-    List<Reserva> findByTenantIdAndDeletedAtIsNullAndDataInicioBetween(UUID tenantId, LocalDateTime start, LocalDateTime end);
+    List<Reserva> findByTenantIdAndDeletedAtIsNullAndDataInicioBetween(LocalDateTime start, LocalDateTime end);
 }

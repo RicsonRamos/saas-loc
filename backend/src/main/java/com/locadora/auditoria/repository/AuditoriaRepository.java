@@ -12,7 +12,7 @@ import java.util.UUID;
 @Repository
 public interface AuditoriaRepository extends JpaRepository<Auditoria, UUID> {
 
-    Page<Auditoria> findByTenantIdOrderByCreatedAtDesc(UUID tenantId, Pageable pageable);
+    Page<Auditoria> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     List<Auditoria> findByCorrelationId(String correlationId);
 }

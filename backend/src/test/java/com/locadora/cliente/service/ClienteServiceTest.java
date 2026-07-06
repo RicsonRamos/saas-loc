@@ -3,13 +3,17 @@ package com.locadora.cliente.service;
 import com.locadora.cliente.dto.ClienteRequest;
 import com.locadora.cliente.dto.ClienteResponse;
 import com.locadora.cliente.entity.Cliente;
+import com.locadora.cliente.entity.TipoCliente;
 import com.locadora.cliente.mapper.ClienteMapper;
 import com.locadora.cliente.repository.ClienteRepository;
 import com.locadora.common.exception.ResourceNotFoundException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
@@ -18,6 +22,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,17 +32,31 @@ class ClienteServiceTest {
     @Mock private ClienteMapper clienteMapper;
     @InjectMocks private ClienteService clienteService;
 
+    private MockedStatic<TenantContext> tenantContextMock;
+    private final UUID TENANT_ID = UUID.randomUUID();
+
+    @BeforeEach
+    void setUp() {
+        tenantContextMock = mockStatic(TenantContext.class);
+        tenantContextMock.when(TenantContext::getTenantId).thenReturn(TENANT_ID);
+    }
+
+    @AfterEach
+    void tearDown() {
+        tenantContextMock.close();
+    }
+
     @Test
     void deveCriarClienteComSucesso() {
-        ClienteRequest request = new ClienteRequest();
-        request.setNome("João Silva");
-        request.setDocumento("123.456.789-00");
+        ClienteRequest request = new ClienteRequest(
+                "João Silva", TipoCliente.PESSOA_FISICA, "123.456.789-00", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null
+        );
 
         Cliente cliente = new Cliente();
         cliente.setId(UUID.randomUUID());
         cliente.setDocumento("12345678900");
 
-        when(clienteRepository.existsByDocumentoAndDeletedAtIsNull("12345678900")).thenReturn(false);
+        when(clienteRepository.existsByDocumentoAndTenantIdAndDeletedAtIsNull("12345678900", TENANT_ID)).thenReturn(false);
         when(clienteMapper.toEntity(request)).thenReturn(cliente);
         when(clienteRepository.save(any())).thenReturn(cliente);
         when(clienteMapper.toResponse(cliente)).thenReturn(new ClienteResponse());
@@ -49,7 +68,7 @@ class ClienteServiceTest {
     @Test
     void deveLancarExcecaoAoBuscarClienteInexistente() {
         UUID id = UUID.randomUUID();
-        when(clienteRepository.findByIdAndDeletedAtIsNull(id)).thenReturn(Optional.empty());
+        when(clienteRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, TENANT_ID)).thenReturn(Optional.empty());
         assertThrows(ResourceNotFoundException.class, () -> clienteService.buscarPorId(id));
     }
 }

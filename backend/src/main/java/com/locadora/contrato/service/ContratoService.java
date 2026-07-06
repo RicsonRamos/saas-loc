@@ -32,7 +32,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-import com.locadora.shared.tenant.TenantContext;
 
 /**
  * Serviço de Contratos — Multi-Tenant.
@@ -63,19 +62,18 @@ public class ContratoService {
 
     @Transactional
     public ContratoResponse abrirContrato(ContratoRequest request) {
-        UUID tenantId = TenantContext.getTenantId();
 
-        Cliente cliente = clienteRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getClienteId(), tenantId)
+        Cliente cliente = clienteRepository.findByIdAndDeletedAtIsNull(request.getClienteId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente", "id", request.getClienteId()));
 
-        Veiculo veiculo = veiculoRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getVeiculoId(), tenantId)
+        Veiculo veiculo = veiculoRepository.findByIdAndDeletedAtIsNull(request.getVeiculoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Veículo", "id", request.getVeiculoId()));
 
         if (veiculo.getStatus() != StatusVeiculo.DISPONIVEL) {
             throw new BusinessException("O veículo selecionado não está disponível para locação. Status atual: " + veiculo.getStatus());
         }
 
-        if (contratoRepository.existsByVeiculoIdAndStatusAndTenantIdAndDeletedAtIsNull(veiculo.getId(), StatusContrato.ATIVO, tenantId)) {
+        if (contratoRepository.existsByVeiculoIdAndStatusAndDeletedAtIsNull(veiculo.getId(), StatusContrato.ATIVO)) {
             throw new BusinessException("O veículo selecionado já possui um contrato ativo.");
         }
 
@@ -96,8 +94,7 @@ public class ContratoService {
 
     @Transactional(readOnly = true)
     public PagedResponse<ContratoResponse> listar(Pageable pageable) {
-        UUID tenantId = TenantContext.getTenantId();
-        Page<Contrato> page = contratoRepository.findByTenantIdAndDeletedAtIsNull(tenantId, pageable);
+        Page<Contrato> page = contratoRepository.findByTenantIdAndDeletedAtIsNull(pageable);
         List<ContratoResponse> data = page.getContent().stream()
                 .map(contratoMapper::toResponse)
                 .toList();
@@ -157,7 +154,7 @@ public class ContratoService {
     }
 
     private Contrato obterContratoPorId(UUID id) {
-        return contratoRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, TenantContext.getTenantId())
+        return contratoRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contrato", "id", id));
     }
 }

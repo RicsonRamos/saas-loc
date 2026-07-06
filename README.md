@@ -27,6 +27,12 @@ Plataforma unificada executada localmente usando **SQLite** como banco de dados 
 
 O **Locadora ERP Desktop** é um sistema completo projetado para rodar em computadores locais sem a necessidade de instalar servidores de banco de dados pesados, Docker ou proxies reversos como Nginx. 
 
+### 🚀 Estado Atual
+A aplicação foi **100% portada para Desktop/SQLite**. 
+* ✅ Todas as funcionalidades (Reservas, Contratos, Financeiro, Manutenção, Alertas e Auditoria) operacionais em modo Single-Tenant local.
+* ✅ Todos os testes unitários passando.
+* ✅ Aplicativo executável (`LocadoraERP.exe`) gerado via jpackage na pasta `dist/`.
+
 Toda a infraestrutura é empacotada no executável Java: o banco de dados é um arquivo SQLite local e as páginas React são servidas diretamente pelo Spring Boot.
 
 ### Diferenciais Operacionais

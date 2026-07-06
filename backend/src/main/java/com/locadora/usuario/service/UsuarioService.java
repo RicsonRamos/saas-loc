@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
-import com.locadora.shared.tenant.TenantContext;
 
 /**
  * Serviço de Usuários — Multi-Tenant.
@@ -52,8 +51,7 @@ public class UsuarioService {
         usuario.setSenha(passwordEncoder.encode(request.getSenha()));
 
         // O tenant_id do usuário criado herdará o do criador/contexto
-        usuario.setTenantId(TenantContext.getTenantId());
-
+        
         usuario = usuarioRepository.save(usuario);
         log.info("Usuário criado com sucesso: {}", usuario.getEmail());
 
@@ -62,7 +60,7 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public PagedResponse<UsuarioResponse> listar(Pageable pageable) {
-        Page<Usuario> page = usuarioRepository.findByTenantIdAndDeletedAtIsNull(TenantContext.getTenantId(), pageable);
+        Page<Usuario> page = usuarioRepository.findByTenantIdAndDeletedAtIsNull(pageable);
         List<UsuarioResponse> data = page.getContent().stream()
                 .map(usuarioMapper::toResponse)
                 .toList();
@@ -105,7 +103,7 @@ public class UsuarioService {
     }
 
     private Usuario obterUsuarioPorId(UUID id) {
-        return usuarioRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, TenantContext.getTenantId())
+        return usuarioRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário", "id", id));
     }
 }

@@ -18,7 +18,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.locadora.shared.tenant.TenantContext;
 import java.util.UUID;
 
 /**
@@ -42,13 +41,12 @@ public class DashboardService {
 
     @Transactional(readOnly = true)
     public DashboardResponse obterDashboardMensal() {
-        UUID tenantId = TenantContext.getTenantId();
-        OcupacaoFrotaDTO frotaDTO = apurarOcupacaoFrota(tenantId);
+        OcupacaoFrotaDTO frotaDTO = apurarOcupacaoFrota();
 
         LocalDate hoje = LocalDate.now();
         FluxoCaixaResponse fluxo = financeiroService.obterFluxoMensal(hoje.getYear(), hoje.getMonthValue());
 
-        List<RentabilidadeVeiculoProjection> projecoes = lancamentoFinanceiroRepository.getRentabilidadeVeiculos(tenantId);
+        List<RentabilidadeVeiculoProjection> projecoes = lancamentoFinanceiroRepository.getRentabilidadeVeiculos();
 
         List<RentabilidadeVeiculoDTO> rentabilidades = projecoes.stream().map(p -> {
             BigDecimal rec = p.getTotalReceitas() != null ? p.getTotalReceitas() : BigDecimal.ZERO;
@@ -81,11 +79,11 @@ public class DashboardService {
                 .build();
     }
 
-    private OcupacaoFrotaDTO apurarOcupacaoFrota(UUID tenantId) {
-        long total = veiculoRepository.countByTenantIdAndDeletedAtIsNull(tenantId);
-        long disponiveis = veiculoRepository.countByStatusAndTenantIdAndDeletedAtIsNull(StatusVeiculo.DISPONIVEL, tenantId);
-        long locados = veiculoRepository.countByStatusAndTenantIdAndDeletedAtIsNull(StatusVeiculo.LOCADO, tenantId);
-        long oficina = veiculoRepository.countByStatusAndTenantIdAndDeletedAtIsNull(StatusVeiculo.MANUTENCAO, tenantId);
+    private OcupacaoFrotaDTO apurarOcupacaoFrota() {
+        long total = veiculoRepository.countByDeletedAtIsNull();
+        long disponiveis = veiculoRepository.countByStatusAndDeletedAtIsNull(StatusVeiculo.DISPONIVEL);
+        long locados = veiculoRepository.countByStatusAndDeletedAtIsNull(StatusVeiculo.LOCADO);
+        long oficina = veiculoRepository.countByStatusAndDeletedAtIsNull(StatusVeiculo.MANUTENCAO);
 
         double taxaOcupacao = 0.0;
         if (total > 0) {

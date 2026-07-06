@@ -18,7 +18,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-import com.locadora.shared.tenant.TenantContext;
 
 /**
  * Serviço de Relatórios — Multi-Tenant.
@@ -121,7 +120,7 @@ public class RelatorioService {
     private List<LancamentoFinanceiro> buscarLancamentos(int ano, int mes) {
         LocalDate inicio = LocalDate.of(ano, mes, 1);
         LocalDate fim = inicio.withDayOfMonth(inicio.lengthOfMonth());
-        return lancamentoRepository.findByTenantIdAndDataPagamentoBetweenAndDeletedAtIsNullOrderByDataPagamentoDesc(
-                TenantContext.getTenantId(), inicio, fim);
+        return lancamentoRepository.findAllByDataPagamentoBetweenAndDeletedAtIsNullOrderByDataPagamentoDesc(
+                inicio, fim);
     }
 }

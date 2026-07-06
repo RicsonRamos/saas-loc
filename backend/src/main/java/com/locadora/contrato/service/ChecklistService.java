@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import com.locadora.shared.tenant.TenantContext;
 
 @Service
 public class ChecklistService {
@@ -47,12 +46,11 @@ public class ChecklistService {
 
     @Transactional
     public ChecklistResponse salvar(ChecklistRequest request) {
-        UUID tenantId = TenantContext.getTenantId();
-        Contrato contrato = contratoRepository.findByIdAndTenantIdAndDeletedAtIsNull(request.getContratoId(), tenantId)
+        Contrato contrato = contratoRepository.findByIdAndDeletedAtIsNull(request.getContratoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Contrato", "id", request.getContratoId()));
 
         // Verifica se já existe um checklist desse tipo para este contrato
-        repository.findByContratoIdAndTipoAndTenantIdAndDeletedAtIsNull(contrato.getId(), request.getTipo(), tenantId)
+        repository.findByContratoIdAndTipoAndDeletedAtIsNull(contrato.getId(), request.getTipo())
                 .ifPresent(existing -> {
                     throw new BusinessException("Já existe um checklist de " + request.getTipo() + " para este contrato.");
                 });
@@ -67,8 +65,7 @@ public class ChecklistService {
 
     @Transactional(readOnly = true)
     public List<ChecklistResponse> buscarPorContrato(UUID contratoId) {
-        UUID tenantId = TenantContext.getTenantId();
-        return repository.findByContratoIdAndTenantIdAndDeletedAtIsNull(contratoId, tenantId).stream()
+        return repository.findByContratoIdAndDeletedAtIsNull(contratoId).stream()
                 .map(mapper::toResponse)
                 .toList();
     }
@@ -79,11 +76,10 @@ public class ChecklistService {
      */
     @Transactional(readOnly = true)
     public Map<String, String> compararRetiradaEDevolucao(UUID contratoId) {
-        UUID tenantId = TenantContext.getTenantId();
-        Checklist retirada = repository.findByContratoIdAndTipoAndTenantIdAndDeletedAtIsNull(contratoId, TipoChecklist.RETIRADA, tenantId)
+        Checklist retirada = repository.findByContratoIdAndTipoAndDeletedAtIsNull(contratoId, TipoChecklist.RETIRADA)
                 .orElseThrow(() -> new BusinessException("Checklist de RETIRADA não encontrado para este contrato."));
 
-        Checklist devolucao = repository.findByContratoIdAndTipoAndTenantIdAndDeletedAtIsNull(contratoId, TipoChecklist.DEVOLUCAO, tenantId)
+        Checklist devolucao = repository.findByContratoIdAndTipoAndDeletedAtIsNull(contratoId, TipoChecklist.DEVOLUCAO)
                 .orElseThrow(() -> new BusinessException("Checklist de DEVOLUÇÃO não encontrado para este contrato."));
 
         Map<String, String> divergencias = new HashMap<>();

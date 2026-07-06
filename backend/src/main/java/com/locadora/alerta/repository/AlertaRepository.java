@@ -11,11 +11,11 @@ import java.util.UUID;
 @Repository
 public interface AlertaRepository extends JpaRepository<Alerta, UUID> {
 
-    List<Alerta> findByTenantIdAndLidoFalseAndDeletedAtIsNullOrderByDataAlertaDesc(UUID tenantId);
+    List<Alerta> findByTenantIdAndLidoFalseAndDeletedAtIsNullOrderByDataAlertaDesc();
 
-    List<Alerta> findByTenantIdAndDeletedAtIsNullOrderByDataAlertaDesc(UUID tenantId);
+    List<Alerta> findByTenantIdAndDeletedAtIsNullOrderByDataAlertaDesc();
 
-    Optional<Alerta> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
+    Optional<Alerta> findByIdAndDeletedAtIsNull(UUID id);
 
-    boolean existsByTipoAndEntidadeIdAndLidoFalseAndTenantIdAndDeletedAtIsNull(com.locadora.alerta.entity.TipoAlerta tipo, UUID entidadeId, UUID tenantId);
+    boolean existsByTipoAndEntidadeIdAndLidoFalseAndDeletedAtIsNull(com.locadora.alerta.entity.TipoAlerta tipo, UUID entidadeId);
 }

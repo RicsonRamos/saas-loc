@@ -13,11 +13,11 @@ import java.util.UUID;
 @Repository
 public interface DocumentoVeiculoRepository extends JpaRepository<DocumentoVeiculo, UUID> {
 
-    List<DocumentoVeiculo> findByVeiculoIdAndTenantIdAndDeletedAtIsNull(UUID veiculoId, UUID tenantId);
+    List<DocumentoVeiculo> findByVeiculoIdAndDeletedAtIsNull(UUID veiculoId);
 
-    Optional<DocumentoVeiculo> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
+    Optional<DocumentoVeiculo> findByIdAndDeletedAtIsNull(UUID id);
 
-    Optional<DocumentoVeiculo> findByVeiculoIdAndTipoAndTenantIdAndDeletedAtIsNull(UUID veiculoId, TipoDocumentoVeiculo tipo, UUID tenantId);
+    Optional<DocumentoVeiculo> findByVeiculoIdAndTipoAndDeletedAtIsNull(UUID veiculoId, TipoDocumentoVeiculo tipo);
 
-    List<DocumentoVeiculo> findByTenantIdAndDeletedAtIsNullAndValidadeBetween(UUID tenantId, LocalDate start, LocalDate end);
+    List<DocumentoVeiculo> findAllByDeletedAtIsNullAndValidadeBetween(LocalDate start, LocalDate end);
 }
