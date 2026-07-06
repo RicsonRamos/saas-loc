@@ -1,15 +1,16 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { LayoutDashboard, Users, Car, FileText, DollarSign, LogOut } from 'lucide-react';
 
 export function Sidebar() {
   const { logout } = useAuth();
   
   const menuItems = [
-    { name: 'Dashboard', path: '/' },
-    { name: 'Clientes', path: '/clientes' },
-    { name: 'Frota', path: '/frota' },
-    { name: 'Contratos', path: '/contratos' },
-    { name: 'Financeiro', path: '/financeiro' },
+    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { name: 'Clientes', path: '/clientes', icon: Users },
+    { name: 'Frota', path: '/frota', icon: Car },
+    { name: 'Contratos', path: '/contratos', icon: FileText },
+    { name: 'Financeiro', path: '/financeiro', icon: DollarSign },
   ];
 
   return (
@@ -33,25 +34,30 @@ export function Sidebar() {
       </div>
       
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {menuItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            style={({ isActive }) => ({
-              padding: '12px 16px',
-              borderRadius: 'var(--radius-md)',
-              color: isActive ? '#fff' : 'var(--text-muted)',
-              background: isActive ? 'var(--primary)' : 'transparent',
-              fontWeight: isActive ? 600 : 500,
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              boxShadow: isActive ? '0 4px 12px rgba(99, 102, 241, 0.4)' : 'none'
-            })}
-          >
-            {item.name}
-          </NavLink>
-        ))}
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              style={({ isActive }) => ({
+                padding: '12px 16px',
+                borderRadius: 'var(--radius-md)',
+                color: isActive ? '#fff' : 'var(--text-muted)',
+                background: isActive ? 'var(--primary)' : 'transparent',
+                fontWeight: isActive ? 600 : 500,
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                boxShadow: isActive ? '0 4px 12px rgba(99, 102, 241, 0.4)' : 'none'
+              })}
+            >
+              <Icon size={20} />
+              {item.name}
+            </NavLink>
+          );
+        })}
       </nav>
       
       <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border-color)', paddingTop: '24px' }}>
@@ -66,7 +72,11 @@ export function Sidebar() {
             borderRadius: 'var(--radius-md)',
             fontWeight: 500,
             cursor: 'pointer',
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
@@ -75,7 +85,8 @@ export function Sidebar() {
             e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
           }}
         >
-          Sair do Sistema
+          <LogOut size={20} />
+          <span>Sair do Sistema</span>
         </button>
       </div>
     </aside>

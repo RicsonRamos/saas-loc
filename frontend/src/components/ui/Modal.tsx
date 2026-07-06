@@ -4,9 +4,10 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  maxWidth?: string;
 }
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, maxWidth = '500px' }: ModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -25,7 +26,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     }}>
       <div className="glass-panel" style={{
         width: '100%',
-        maxWidth: '500px',
+        maxWidth: maxWidth,
         borderRadius: 'var(--radius-md)',
         overflow: 'hidden',
         animation: 'fadeInUp 0.3s ease forwards',
