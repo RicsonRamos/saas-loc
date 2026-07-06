@@ -16,8 +16,8 @@ const contratoSchema = z.object({
   veiculoId: z.string().uuid('Selecione um veículo'),
   dataInicio: z.string().min(1, 'Obrigatório'),
   dataFimPrevista: z.string().min(1, 'Obrigatório'),
-  valorTotal: z.preprocess((val) => Number(val), z.number().min(1, 'Valor obrigatório')),
-  caucao: z.preprocess((val) => Number(val), z.number().optional()),
+  valorTotal: z.coerce.number().min(1, 'Valor obrigatório'),
+  caucao: z.coerce.number().optional(),
 });
 
 type ContratoFormData = z.infer<typeof contratoSchema>;
@@ -34,7 +34,7 @@ export function ContratoModal({ isOpen, onClose, onSave }: ContratoModalProps) {
   const [loading, setLoading] = useState(true);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<ContratoFormData>({
-    resolver: zodResolver(contratoSchema),
+    resolver: zodResolver(contratoSchema) as any,
   });
 
   useEffect(() => {
@@ -80,7 +80,7 @@ export function ContratoModal({ isOpen, onClose, onSave }: ContratoModalProps) {
       {loading ? (
         <div style={{ color: 'var(--text-muted)' }}>Carregando dados...</div>
       ) : (
-        <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSubmit(onSubmit as any)} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Cliente</label>

@@ -7,9 +7,9 @@ import { Input } from '../../components/ui/Input';
 import { EncerramentoContratoRequest } from '../../interfaces/contrato';
 
 const encerramentoSchema = z.object({
-  kmFinal: z.preprocess((val) => Number(val), z.number().min(0, 'Deve ser maior que 0')),
+  kmFinal: z.coerce.number().min(0, 'Deve ser maior que 0'),
   dataDevolucao: z.string().min(1, 'Obrigatório'),
-  valorAdicional: z.preprocess((val) => Number(val), z.number().optional()),
+  valorAdicional: z.coerce.number().optional(),
 });
 
 type EncerramentoFormData = z.infer<typeof encerramentoSchema>;
@@ -23,7 +23,7 @@ interface EncerrarContratoModalProps {
 
 export function EncerrarContratoModal({ isOpen, onClose, onSave, kmInicial = 0 }: EncerrarContratoModalProps) {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<EncerramentoFormData>({
-    resolver: zodResolver(encerramentoSchema),
+    resolver: zodResolver(encerramentoSchema) as any,
   });
 
   const onSubmit = async (data: EncerramentoFormData) => {
@@ -45,7 +45,7 @@ export function EncerrarContratoModal({ isOpen, onClose, onSave, kmInicial = 0 }
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Encerrar Locação (Checkout)" maxWidth="500px">
-      <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <form onSubmit={handleSubmit(onSubmit as any)} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         
         <div style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
           <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>KM Inicial no momento da locação: </span>

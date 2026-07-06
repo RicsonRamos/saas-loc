@@ -12,12 +12,12 @@ const veiculoSchema = z.object({
   renavam: z.string().optional(),
   marca: z.string().min(2, 'Obrigatório'),
   modelo: z.string().min(2, 'Obrigatório'),
-  anoFabricacao: z.preprocess((val) => Number(val), z.number().min(1900)),
-  anoModelo: z.preprocess((val) => Number(val), z.number().min(1900)),
+  anoFabricacao: z.coerce.number().min(1900),
+  anoModelo: z.coerce.number().min(1900),
   cor: z.string().optional(),
-  quilometragem: z.preprocess((val) => Number(val), z.number().min(0)),
+  quilometragem: z.coerce.number().min(0),
   status: z.enum(['DISPONIVEL', 'RESERVADO', 'LOCADO', 'MANUTENCAO', 'INATIVO', 'VENDIDO']),
-  valorFipe: z.preprocess((val) => Number(val), z.number().optional()),
+  valorFipe: z.coerce.number().optional(),
 });
 
 type VeiculoFormData = z.infer<typeof veiculoSchema>;
@@ -30,7 +30,7 @@ interface VeiculoModalProps {
 
 export function VeiculoModal({ isOpen, onClose, onSave }: VeiculoModalProps) {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<VeiculoFormData>({
-    resolver: zodResolver(veiculoSchema),
+    resolver: zodResolver(veiculoSchema) as any,
     defaultValues: {
       status: 'DISPONIVEL',
       quilometragem: 0,
@@ -49,7 +49,7 @@ export function VeiculoModal({ isOpen, onClose, onSave }: VeiculoModalProps) {
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Novo Veículo" maxWidth="600px">
-      <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <form onSubmit={handleSubmit(onSubmit as any)} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         
         <div style={{ display: 'flex', gap: '16px' }}>
           <div style={{ flex: 1 }}>

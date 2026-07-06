@@ -8,7 +8,7 @@ import { LancamentoRequest } from '../../interfaces/financeiro';
 
 const lancamentoSchema = z.object({
   tipo: z.enum(['RECEITA', 'DESPESA']),
-  valor: z.preprocess((val) => Number(val), z.number().min(0.01, 'Valor inválido')),
+  valor: z.coerce.number().min(0.01, 'Valor inválido'),
   categoria: z.enum(['ALUGUEL', 'CAUCAO', 'MANUTENCAO', 'COMBUSTIVEL', 'IMPOSTOS_TAXAS', 'SALARIOS', 'OUTROS']),
   descricao: z.string().min(3, 'Descrição obrigatória'),
   status: z.enum(['PENDENTE', 'PAGO', 'CANCELADO']),
@@ -25,8 +25,8 @@ interface LancamentoModalProps {
 }
 
 export function LancamentoModal({ isOpen, onClose, onSave }: LancamentoModalProps) {
-  const { register, handleSubmit, formState: { errors, isSubmitting }, watch } = useForm<LancamentoFormData>({
-    resolver: zodResolver(lancamentoSchema),
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LancamentoFormData>({
+    resolver: zodResolver(lancamentoSchema) as any,
     defaultValues: {
       tipo: 'DESPESA',
       status: 'PENDENTE'
@@ -49,7 +49,7 @@ export function LancamentoModal({ isOpen, onClose, onSave }: LancamentoModalProp
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Novo Lançamento Financeiro" maxWidth="600px">
-      <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <form onSubmit={handleSubmit(onSubmit as any)} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         
         <div style={{ display: 'flex', gap: '16px' }}>
           <div style={{ flex: 1 }}>
