@@ -5,7 +5,6 @@ import com.locadora.cliente.dto.ClienteResponse;
 import com.locadora.cliente.service.ClienteService;
 import com.locadora.common.dto.ApiResponse;
 import com.locadora.common.dto.PagedResponse;
-import com.locadora.security.jwt.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,6 +14,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,11 +35,9 @@ import java.util.UUID;
 public class ClienteController {
 
     private final ClienteService clienteService;
-    private final JwtTokenProvider jwtTokenProvider;
 
-    public ClienteController(ClienteService clienteService, JwtTokenProvider jwtTokenProvider) {
+    public ClienteController(ClienteService clienteService) {
         this.clienteService = clienteService;
-        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @PostMapping
@@ -78,9 +76,12 @@ public class ClienteController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     @Operation(summary = "Excluir cliente", description = "Realiza soft-delete de um cliente")
-    public ResponseEntity<ApiResponse<Void>> excluir(@PathVariable UUID id, HttpServletRequest request) {
-        String token = request.getHeader("Authorization").substring(7);
-        UUID currentUserId = jwtTokenProvider.getUserIdFromToken(token);
+    public ResponseEntity<ApiResponse<Void>> excluir(@PathVariable UUID id) {
+        String name = SecurityContextHolder.getContext().getAuthentication().getName();
+        UUID currentUserId = null;
+        try {
+            currentUserId = UUID.fromString(name);
+        } catch (Exception e) {}
         
         clienteService.excluir(id, currentUserId);
         return ResponseEntity.ok(ApiResponse.message("Cliente excluído com sucesso"));

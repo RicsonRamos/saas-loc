@@ -5,7 +5,6 @@ import com.locadora.common.dto.PagedResponse;
 import com.locadora.reserva.dto.ReservaRequest;
 import com.locadora.reserva.dto.ReservaResponse;
 import com.locadora.reserva.service.ReservaService;
-import com.locadora.security.jwt.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,6 +14,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,11 +34,9 @@ import java.util.UUID;
 public class ReservaController {
 
     private final ReservaService service;
-    private final JwtTokenProvider jwtTokenProvider;
 
-    public ReservaController(ReservaService service, JwtTokenProvider jwtTokenProvider) {
+    public ReservaController(ReservaService service) {
         this.service = service;
-        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @Operation(summary = "Criar uma nova reserva")
@@ -95,9 +93,12 @@ public class ReservaController {
     @Operation(summary = "Realizar a exclusão lógica de uma reserva")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> excluir(@PathVariable UUID id, HttpServletRequest request) {
-        String token = request.getHeader("Authorization").substring(7);
-        UUID currentUserId = jwtTokenProvider.getUserIdFromToken(token);
+    public ResponseEntity<ApiResponse<Void>> excluir(@PathVariable UUID id) {
+        String name = SecurityContextHolder.getContext().getAuthentication().getName();
+        UUID currentUserId = null;
+        try {
+            currentUserId = UUID.fromString(name);
+        } catch (Exception e) {}
         service.excluir(id, currentUserId);
         return ResponseEntity.ok(ApiResponse.message("Reserva excluída com sucesso"));
     }

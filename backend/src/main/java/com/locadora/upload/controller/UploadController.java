@@ -1,7 +1,6 @@
 package com.locadora.upload.controller;
 
 import com.locadora.common.dto.ApiResponse;
-import com.locadora.security.jwt.JwtTokenProvider;
 import com.locadora.upload.dto.UploadResponse;
 import com.locadora.upload.entity.Upload;
 import com.locadora.upload.service.StorageService;
@@ -34,11 +33,9 @@ import java.util.UUID;
 public class UploadController {
 
     private final StorageService storageService;
-    private final JwtTokenProvider jwtTokenProvider;
 
-    public UploadController(StorageService storageService, JwtTokenProvider jwtTokenProvider) {
+    public UploadController(StorageService storageService) {
         this.storageService = storageService;
-        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @Operation(summary = "Realiza o upload de um arquivo vinculado a uma entidade")
@@ -47,11 +44,13 @@ public class UploadController {
     public ResponseEntity<ApiResponse<UploadResponse>> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam("relacionamentoTipo") String relacionamentoTipo,
-            @RequestParam("relacionamentoId") UUID relacionamentoId,
-            HttpServletRequest request) throws IOException {
+            @RequestParam("relacionamentoId") UUID relacionamentoId) throws IOException {
 
-        String token = request.getHeader("Authorization").substring(7);
-        UUID currentUserId = jwtTokenProvider.getUserIdFromToken(token);
+        String name = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        UUID currentUserId = null;
+        try {
+            currentUserId = UUID.fromString(name);
+        } catch (Exception e) {}
 
         Upload upload = storageService.salvar(
                 file.getInputStream(),

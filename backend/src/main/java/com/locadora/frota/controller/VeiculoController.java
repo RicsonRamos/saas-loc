@@ -5,7 +5,6 @@ import com.locadora.common.dto.PagedResponse;
 import com.locadora.frota.dto.VeiculoRequest;
 import com.locadora.frota.dto.VeiculoResponse;
 import com.locadora.frota.service.VeiculoService;
-import com.locadora.security.jwt.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,6 +14,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,11 +35,9 @@ import java.util.UUID;
 public class VeiculoController {
 
     private final VeiculoService veiculoService;
-    private final JwtTokenProvider jwtTokenProvider;
 
-    public VeiculoController(VeiculoService veiculoService, JwtTokenProvider jwtTokenProvider) {
+    public VeiculoController(VeiculoService veiculoService) {
         this.veiculoService = veiculoService;
-        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @PostMapping
@@ -78,9 +76,12 @@ public class VeiculoController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('VEICULO_EXCLUIR')")
     @Operation(summary = "Excluir veículo", description = "Realiza soft-delete de um veículo (se não estiver locado)")
-    public ResponseEntity<ApiResponse<Void>> excluir(@PathVariable UUID id, HttpServletRequest request) {
-        String token = request.getHeader("Authorization").substring(7);
-        UUID currentUserId = jwtTokenProvider.getUserIdFromToken(token);
+    public ResponseEntity<ApiResponse<Void>> excluir(@PathVariable UUID id) {
+        String name = SecurityContextHolder.getContext().getAuthentication().getName();
+        UUID currentUserId = null;
+        try {
+            currentUserId = UUID.fromString(name);
+        } catch (Exception e) {}
         
         veiculoService.excluir(id, currentUserId);
         return ResponseEntity.ok(ApiResponse.message("Veículo excluído com sucesso"));

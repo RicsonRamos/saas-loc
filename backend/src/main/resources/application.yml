@@ -37,9 +37,11 @@ server:
     include-stacktrace: never
     include-message: never
 
-app:
-  jwt:
-    supabase-secret: ${SUPABASE_JWT_SECRET:dev-secret-key-change-in-production-must-be-at-least-256-bits-long}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${SUPABASE_URL}/rest/v1//.well-known/jwks.json
 
 management:
   endpoints:
