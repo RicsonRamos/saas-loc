@@ -1,50 +1,63 @@
-import { useState, useEffect, useCallback } from 'react';
-
-interface User {
-  email: string;
-}
+import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { Session, User } from '@supabase/supabase-js';
+import { supabase } from '../services/supabaseClient';
 
 interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
-  login: (accessToken: string, refreshToken: string, email: string) => void;
-  logout: () => void;
+  session: Session | null;
+  loading: boolean;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthState>({
+  isAuthenticated: false,
+  user: null,
+  session: null,
+  loading: true,
+  logout: async () => {},
+});
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  return (
+    <AuthContext.Provider value={{
+      isAuthenticated: !!session,
+      user,
+      session,
+      loading,
+      logout,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth(): AuthState {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return !!localStorage.getItem('accessToken');
-  });
-
-  const [user, setUser] = useState<User | null>(() => {
-    const email = localStorage.getItem('userEmail');
-    return email ? { email } : null;
-  });
-
-  const login = useCallback((accessToken: string, refreshToken: string, email: string) => {
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    localStorage.setItem('userEmail', email);
-    setIsAuthenticated(true);
-    setUser({ email });
-  }, []);
-
-  const logout = useCallback(() => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('userEmail');
-    setIsAuthenticated(false);
-    setUser(null);
-  }, []);
-
-  useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    const email = localStorage.getItem('userEmail');
-    if (token && email) {
-      setIsAuthenticated(true);
-      setUser({ email });
-    }
-  }, []);
-
-  return { isAuthenticated, user, login, logout };
+  return useContext(AuthContext);
 }

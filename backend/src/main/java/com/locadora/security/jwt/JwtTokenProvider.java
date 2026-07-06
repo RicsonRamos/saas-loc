@@ -11,13 +11,10 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
 import java.util.UUID;
 
 /**
- * Provedor JWT — Single-Tenant.
- * Gera Access e Refresh Tokens assinados com HMAC.
- * Não contém mais tenant_id nas claims.
+ * Provedor JWT - Validação de tokens do Supabase.
  */
 @Component
 public class JwtTokenProvider {
@@ -25,37 +22,9 @@ public class JwtTokenProvider {
     private static final Logger log = LoggerFactory.getLogger(JwtTokenProvider.class);
 
     private final SecretKey key;
-    private final long accessExpirationMs;
-    private final long refreshExpirationMs;
 
-    public JwtTokenProvider(
-            @Value("${app.jwt.secret}") String secret,
-            @Value("${app.jwt.access-expiration-ms}") long accessExpirationMs,
-            @Value("${app.jwt.refresh-expiration-ms}") long refreshExpirationMs) {
+    public JwtTokenProvider(@Value("${app.jwt.supabase-secret}") String secret) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.accessExpirationMs = accessExpirationMs;
-        this.refreshExpirationMs = refreshExpirationMs;
-    }
-
-    public String generateAccessToken(UUID userId, String username) {
-        return generateToken(userId, username, accessExpirationMs);
-    }
-
-    public String generateRefreshToken(UUID userId, String username) {
-        return generateToken(userId, username, refreshExpirationMs);
-    }
-
-    private String generateToken(UUID userId, String username, long expirationMs) {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + expirationMs);
-
-        return Jwts.builder()
-                .subject(userId.toString())
-                .claim("email", username)
-                .issuedAt(now)
-                .expiration(expiryDate)
-                .signWith(key)
-                .compact();
     }
 
     public UUID getUserIdFromToken(String token) {
@@ -63,20 +32,9 @@ public class JwtTokenProvider {
         return UUID.fromString(claims.getSubject());
     }
 
-    public UUID getTenantIdFromToken(String token) {
-        Claims claims = parseClaims(token);
-        String tenantIdStr = claims.get("tenantId", String.class);
-        return tenantIdStr != null ? UUID.fromString(tenantIdStr) : null;
-    }
-
     public String getEmailFromToken(String token) {
         Claims claims = parseClaims(token);
         return claims.get("email", String.class);
-    }
-
-    public String getTokenType(String token) {
-        Claims claims = parseClaims(token);
-        return claims.get("type", String.class);
     }
 
     public boolean validateToken(String token) {

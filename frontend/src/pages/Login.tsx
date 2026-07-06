@@ -1,33 +1,46 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import api from '../services/api';
+import { supabase } from '../services/supabaseClient';
 
 export default function Login() {
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/login', { email, senha });
-      const { accessToken, refreshToken } = response.data.data;
-      login(accessToken, refreshToken, email);
-      navigate('/');
-    } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'response' in err) {
-        const axiosErr = err as { response?: { data?: { message?: string } } };
-        setError(axiosErr.response?.data?.message || 'Erro ao realizar login');
+      if (isLogin) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password: senha,
+        });
+
+        if (signInError) throw signInError;
+        
+        // Supabase onAuthStateChange fará o redirect via contexto/app
+        navigate('/');
       } else {
-        setError('Erro ao conectar com o servidor');
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password: senha,
+        });
+
+        if (signUpError) throw signUpError;
+        
+        setSuccess('Cadastro realizado! Verifique seu e-mail ou faça login (se e-mail confirmation estiver desabilitado).');
+        setIsLogin(true);
       }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao realizar autenticação');
     } finally {
       setLoading(false);
     }
@@ -39,31 +52,67 @@ export default function Login() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
+      background: 'var(--bg-app)',
+      backgroundImage: 'radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.15) 0px, transparent 50%)',
       fontFamily: "'Inter', sans-serif"
     }}>
-      <div style={{
+      <div className="glass-panel" style={{
         width: '100%',
         maxWidth: '420px',
         padding: '40px',
         borderRadius: '16px',
-        background: 'rgba(255, 255, 255, 0.05)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+        boxShadow: 'var(--shadow-glass)',
       }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{
             fontSize: '2rem',
+            fontFamily: "'Outfit', sans-serif",
             fontWeight: 700,
-            color: '#fff',
+            color: 'var(--text-main)',
             marginBottom: '8px',
           }}>
             🚗 Locadora SaaS
           </h1>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.95rem' }}>
-            Faça login para continuar
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+            {isLogin ? 'Faça login para continuar' : 'Crie sua conta para começar'}
           </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+          <button
+            type="button"
+            onClick={() => setIsLogin(true)}
+            style={{
+              flex: 1,
+              padding: '10px',
+              border: 'none',
+              background: isLogin ? 'var(--primary)' : 'rgba(255, 255, 255, 0.05)',
+              color: isLogin ? '#fff' : 'var(--text-muted)',
+              borderRadius: 'var(--radius-sm)',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            Login
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsLogin(false)}
+            style={{
+              flex: 1,
+              padding: '10px',
+              border: 'none',
+              background: !isLogin ? 'var(--primary)' : 'rgba(255, 255, 255, 0.05)',
+              color: !isLogin ? '#fff' : 'var(--text-muted)',
+              borderRadius: 'var(--radius-sm)',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            Cadastro
+          </button>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -71,14 +120,13 @@ export default function Login() {
             <label style={{
               display: 'block',
               marginBottom: '8px',
-              color: 'rgba(255,255,255,0.8)',
+              color: 'var(--text-main)',
               fontSize: '0.9rem',
               fontWeight: 500,
             }}>
               E-mail
             </label>
             <input
-              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -87,10 +135,10 @@ export default function Login() {
               style={{
                 width: '100%',
                 padding: '12px 16px',
-                borderRadius: '10px',
-                border: '1px solid rgba(255,255,255,0.15)',
-                background: 'rgba(255,255,255,0.08)',
-                color: '#fff',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-color)',
+                background: 'rgba(15, 23, 42, 0.4)',
+                color: 'var(--text-main)',
                 fontSize: '1rem',
                 outline: 'none',
                 transition: 'border-color 0.3s ease',
@@ -102,27 +150,26 @@ export default function Login() {
             <label style={{
               display: 'block',
               marginBottom: '8px',
-              color: 'rgba(255,255,255,0.8)',
+              color: 'var(--text-main)',
               fontSize: '0.9rem',
               fontWeight: 500,
             }}>
               Senha
             </label>
             <input
-              id="login-password"
               type="password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               required
-              minLength={8}
-              placeholder="Mínimo 8 caracteres"
+              minLength={6}
+              placeholder="Mínimo 6 caracteres"
               style={{
                 width: '100%',
                 padding: '12px 16px',
-                borderRadius: '10px',
-                border: '1px solid rgba(255,255,255,0.15)',
-                background: 'rgba(255,255,255,0.08)',
-                color: '#fff',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-color)',
+                background: 'rgba(15, 23, 42, 0.4)',
+                color: 'var(--text-main)',
                 fontSize: '1rem',
                 outline: 'none',
                 transition: 'border-color 0.3s ease',
@@ -133,10 +180,10 @@ export default function Login() {
           {error && (
             <div style={{
               padding: '12px',
-              borderRadius: '8px',
-              background: 'rgba(255, 107, 107, 0.15)',
-              border: '1px solid rgba(255, 107, 107, 0.3)',
-              color: '#ff6b6b',
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: 'var(--error)',
               fontSize: '0.9rem',
               marginBottom: '20px',
               textAlign: 'center',
@@ -145,26 +192,40 @@ export default function Login() {
             </div>
           )}
 
+          {success && (
+            <div style={{
+              padding: '12px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              color: 'var(--success)',
+              fontSize: '0.9rem',
+              marginBottom: '20px',
+              textAlign: 'center',
+            }}>
+              {success}
+            </div>
+          )}
+
           <button
-            id="login-submit"
             type="submit"
             disabled={loading}
             style={{
               width: '100%',
               padding: '14px',
-              borderRadius: '10px',
+              borderRadius: 'var(--radius-sm)',
               border: 'none',
-              background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)',
+              background: 'var(--primary)',
               color: '#fff',
               fontSize: '1rem',
               fontWeight: 600,
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.7 : 1,
               transition: 'all 0.3s ease',
-              boxShadow: '0 4px 15px rgba(108, 92, 231, 0.4)',
+              boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)',
             }}
           >
-            {loading ? 'Entrando...' : 'Entrar'}
+            {loading ? 'Aguarde...' : (isLogin ? 'Entrar' : 'Cadastrar')}
           </button>
         </form>
       </div>

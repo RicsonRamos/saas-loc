@@ -1,60 +1,45 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
-import { useAuth } from './hooks/useAuth';
+import Dashboard from './pages/Dashboard';
+import Clientes from './pages/Clientes';
+import Frota from './pages/Frota';
+import Contratos from './pages/Contratos';
+import Financeiro from './pages/Financeiro';
+import { MainLayout } from './components/layout/MainLayout';
+import { useAuth, AuthProvider } from './hooks/useAuth';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          
+          {/* Protected Routes */}
+          <Route path="/" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
+          <Route path="/clientes" element={<ProtectedRoute><MainLayout><Clientes /></MainLayout></ProtectedRoute>} />
+          <Route path="/frota" element={<ProtectedRoute><MainLayout><Frota /></MainLayout></ProtectedRoute>} />
+          <Route path="/contratos" element={<ProtectedRoute><MainLayout><Contratos /></MainLayout></ProtectedRoute>} />
+          <Route path="/financeiro" element={<ProtectedRoute><MainLayout><Financeiro /></MainLayout></ProtectedRoute>} />
+          
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Verificando sessão...</div>;
+  }
+  
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
   return <>{children}</>;
-}
-
-function Dashboard() {
-  const { logout, user } = useAuth();
-  return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
-      color: '#fff',
-      fontFamily: "'Inter', sans-serif"
-    }}>
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🚗 Locadora SaaS</h1>
-      <p style={{ fontSize: '1.2rem', opacity: 0.8 }}>Bem-vindo, {user?.email}</p>
-      <button
-        onClick={logout}
-        style={{
-          marginTop: '2rem',
-          padding: '12px 32px',
-          fontSize: '1rem',
-          background: 'rgba(255,255,255,0.1)',
-          border: '1px solid rgba(255,255,255,0.3)',
-          color: '#fff',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          transition: 'all 0.3s ease'
-        }}
-      >
-        Sair
-      </button>
-    </div>
-  );
 }
 
 export default App;

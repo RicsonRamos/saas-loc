@@ -9,8 +9,6 @@ import com.locadora.cliente.repository.ClienteRepository;
 import com.locadora.common.exception.ResourceNotFoundException;
 import com.locadora.frota.entity.DocumentoVeiculo;
 import com.locadora.frota.repository.DocumentoVeiculoRepository;
-import com.locadora.usuario.entity.Usuario;
-import com.locadora.usuario.repository.UsuarioRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -29,16 +27,14 @@ public class AlertaService {
     private final AlertaRepository repository;
     private final ClienteRepository clienteRepository;
     private final DocumentoVeiculoRepository documentoVeiculoRepository;
-    private final UsuarioRepository usuarioRepository;
+
 
     public AlertaService(AlertaRepository repository,
                          ClienteRepository clienteRepository,
-                         DocumentoVeiculoRepository documentoVeiculoRepository,
-                         UsuarioRepository usuarioRepository) {
+                         DocumentoVeiculoRepository documentoVeiculoRepository) {
         this.repository = repository;
         this.clienteRepository = clienteRepository;
         this.documentoVeiculoRepository = documentoVeiculoRepository;
-        this.usuarioRepository = usuarioRepository;
     }
 
     @Transactional(readOnly = true)

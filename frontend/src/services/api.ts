@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { supabase } from './supabaseClient';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -9,47 +10,29 @@ const api = axios.create({
   },
 });
 
-// Interceptor para adicionar Bearer Token automaticamente
+// Interceptor para adicionar Bearer Token do Supabase automaticamente
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      config.headers.Authorization = `Bearer ${session.access_token}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Interceptor para tratar 401 e tentar refresh
+// Interceptor para tratar erros de Auth e Rate Limit
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
     const status = error.response?.status;
 
-    if (status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (refreshToken) {
-        try {
-          const response = await axios.post(`${API_URL}/auth/refresh`, {
-            refreshToken,
-          });
-
-          const { accessToken, refreshToken: newRefresh } = response.data.data;
-          localStorage.setItem('accessToken', accessToken);
-          localStorage.setItem('refreshToken', newRefresh);
-
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return api(originalRequest);
-        } catch {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          window.location.href = '/login';
-        }
-      }
+    if (status === 401) {
+      // O Supabase gerencia o refresh automaticamente no client.
+      // Se deu 401 do backend, provavelmente a sessão expirou ou o token é inválido.
+      await supabase.auth.signOut();
+      window.location.href = '/login';
     } else if (status === 429) {
       alert('Muitas requisições (Rate Limit). Por favor, aguarde um instante antes de tentar novamente.');
     } else if (status === 403) {
