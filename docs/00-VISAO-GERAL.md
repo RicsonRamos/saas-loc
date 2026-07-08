@@ -9,7 +9,7 @@ Quando uma regra de negócio não estiver especificada, não invente: isole a in
 Sistema para uma única empresa (a locadora) usar internamente, cobrindo quatro módulos centrais:
 
 - **Frota:** cadastro e status dos veículos (disponível, alugado, em manutenção, baixado).
-- **Contratos/Locações:** fluxo único de reserva → contrato → devolução, vinculando cliente, veículo, motorista e período. "Locação" e "contrato" são tratados como o mesmo conceito, em estágios diferentes de um fluxo — não como módulos separados.
+- **Contratos/Locações:** fluxo único de reserva → contrato → devolução, vinculando cliente, veículo e período. "Locação" e "contrato" são tratados como o mesmo conceito, em estágios diferentes de um fluxo — não como módulos separados. Não existe uma entidade "Motorista" separada: o Cliente já cobre CNH completa, cobrindo também quem dirige o veículo.
 - **Manutenções:** histórico preventivo/corretivo por veículo, custo, oficina/fornecedor, e alertas por quilometragem ou data.
 - **Financeiro/Receitas:** receitas de locação, despesas (incluindo manutenção), pagamentos, inadimplência e rentabilidade por veículo/contrato.
 

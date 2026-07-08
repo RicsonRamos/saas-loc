@@ -47,3 +47,16 @@ Quando receber uma tarefa, identifique a fase correspondente. Se pertencer a uma
 
 ## Política de Mudança de Fase
 Se surgir uma demanda de fase futura antes da hora, registre como backlog e entregue apenas o que for compatível com a fase atual. Mas não trave por burocracia: o objetivo aqui é velocidade com segurança nos pontos críticos (dinheiro e disponibilidade de veículo), não processo pesado.
+
+## Fase 6 — Frota Avançada (entregue fora da sequência original)
+Demanda direta do cliente para o módulo de Frota, entregue em paralelo às fases acima:
+
+- QR code por veículo (`codigo_publico` regenerável) + página pública de consulta sem autenticação.
+- Impressão de ficha e exportação de relatórios (histórico, abastecimentos, manutenções) em PDF.
+- Auditoria: tabela `audit_logs` + timeline de alterações por entidade, instrumentada nos services de veículo, pneu, abastecimento e contrato.
+- Checklist de entrega/devolução com assinatura digital (canvas), armazenada como anexo.
+- Anexos (fotos, documentos) via storage S3-compatível (MinIO local ou Supabase Storage), com referência polimórfica no banco.
+- `vehicle_tracking`: apenas schema preparado para integração futura com GPS — sem tela nem endpoint.
+- Motorista removido: Cliente já cobria CNH completa, então a entidade separada e a tela de condutores adicionais foram descontinuadas.
+
+**Gate:** suíte de testes cobrindo os fluxos acima (upload/download real de anexo, checklist com regra de contrato ativo, rota pública sem token) passando; validado contra Postgres/Storage do Supabase, não só ambiente local.

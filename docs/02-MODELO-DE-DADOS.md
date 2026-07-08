@@ -18,11 +18,13 @@ Toda tabela de negócio deve ter:
 `empresa_id`/RLS não é necessário — o sistema é single-tenant. Se houver múltiplas filiais, use `filial_id` como campo de negócio simples, sem políticas de isolamento tipo RLS.
 
 ## Módulos e Tabelas Sugeridas
-- **Frota:** `veiculos` (placa, modelo, ano, status, km_atual, filial_id).
-- **Clientes/Motoristas:** `clientes`, `motoristas`.
-- **Contratos/Locações:** `contratos` (cliente_id, veiculo_id, motorista_id, data_inicio, data_fim_prevista, data_fim_real, status, valor_diaria, `version`), `contrato_eventos` (histórico de mudança de status).
+- **Frota:** `veiculos` (placa, `codigo_publico` único para consulta via QR sem autenticação, modelo, ano, status, km_atual, filial_id, dados de aquisição/documentação/seguro), `pneus`, `abastecimentos`, `vehicle_tracking` (estrutura preparada para integração futura com GPS — sem endpoint/tela ainda).
+- **Clientes:** `clientes` (dossiê completo: dados pessoais, CNH, financeiro, contato de emergência). Não existe tabela de motorista separada — Cliente cobre também quem dirige.
+- **Contratos/Locações:** `contratos` (cliente_id, veiculo_id, data_inicio, data_fim_prevista, data_fim_real, status, valor_diaria, `version`), `contrato_eventos` (histórico de mudança de status), `checklists`/`checklist_itens`/`assinaturas` (vistoria de entrega/devolução com assinatura digital).
 - **Manutenções:** `manutencoes` (veiculo_id, tipo [preventiva/corretiva], data, km, custo, oficina, descricao, proxima_manutencao_km, proxima_manutencao_data).
 - **Financeiro:** `pagamentos` (contrato_id, valor, data, status, metodo), `despesas` (veiculo_id opcional, categoria, valor, data).
+- **Anexos:** `attachments` (entidade_tipo + entidade_id polimórfico, bucket, caminho_storage — arquivo fica no storage S3-compatível, só a referência entra no banco).
+- **Auditoria:** `audit_logs` (usuario_id, acao, entidade, entidade_id, dados_anteriores/dados_novos em JSONB, ip) — timeline de alterações por entidade.
 
 ## Prevenção de Dupla Alocação (regra crítica)
 Use, em ordem de preferência:

@@ -24,6 +24,8 @@ Autorização é checada no backend via dependency do FastAPI (`Depends(require_
 ## Auditoria Mínima
 Registre em log: login falho, criação/cancelamento de contrato, lançamento financeiro, alteração de permissão de usuário. Não registre senha, token ou dado de pagamento completo.
 
+**Implementado:** tabela `audit_logs` (usuario_id, acao, entidade, entidade_id, dados_anteriores/dados_novos, ip) via helper `registrar_auditoria` (`app/core/audit.py`), chamado explicitamente — sem hook genérico de ORM — nos services de veículo, pneu, abastecimento, contrato, anexo e checklist/assinatura. Consultável via `GET /audit-logs?entidade=...&entidade_id=...` e exibido como timeline na tela do veículo. Login falho e lançamento financeiro ainda não são auditados — backlog.
+
 ## Critérios de Aceite
 - Nenhum endpoint de escrita crítico (contratos, financeiro) roda sem checar permissão.
 - Existe teste de "usuário sem permissão recebe 403".
