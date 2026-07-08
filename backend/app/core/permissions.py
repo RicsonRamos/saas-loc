@@ -26,6 +26,9 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "sinistros:registrar",
         "danos:visualizar",
         "danos:registrar",
+        "abastecimentos:visualizar",
+        "abastecimentos:registrar",
+        "pneus:visualizar",
     },
     FINANCEIRO: {
         "frota:visualizar",
@@ -36,6 +39,8 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "multas:visualizar",
         "sinistros:visualizar",
         "danos:visualizar",
+        "abastecimentos:visualizar",
+        "pneus:visualizar",
     },
     MECANICO: {
         "frota:visualizar",
@@ -44,6 +49,9 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "sinistros:visualizar",
         "danos:visualizar",
         "danos:registrar",
+        "abastecimentos:visualizar",
+        "pneus:visualizar",
+        "pneus:registrar",
     },
 }
 

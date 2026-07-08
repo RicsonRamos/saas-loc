@@ -1,14 +1,16 @@
 import uuid
 from datetime import UTC, date, datetime
+from decimal import Decimal
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.exceptions import NotFoundError
+from app.models.abastecimento import Abastecimento
 from app.models.cliente import Cliente
-from app.models.contrato import Contrato
+from app.models.contrato import STATUS_ATIVO, STATUS_ENCERRADO, Contrato
 from app.models.dano import Dano
-from app.models.financeiro import Despesa
+from app.models.financeiro import STATUS_PAGAMENTO_PAGO, Despesa, Pagamento
 from app.models.manutencao import Manutencao
 from app.models.multa import Multa
 from app.models.sinistro import Sinistro
@@ -22,10 +24,12 @@ from app.schemas.dano import DanoOut
 from app.schemas.multa import MultaOut
 from app.schemas.sinistro import SinistroOut
 from app.schemas.veiculo import (
+    EventoKmOut,
     HistoricoContratoOut,
     HistoricoDespesaOut,
     HistoricoManutencaoOut,
     HistoricoVeiculoOut,
+    IndicadoresVeiculoOut,
     VeiculoCreate,
     VeiculoUpdate,
 )
@@ -115,8 +119,109 @@ def remover(db: Session, veiculo_id: uuid.UUID) -> None:
     db.commit()
 
 
+def _montar_eventos_km(
+    contratos: list[tuple[Contrato, str]],
+    manutencoes: list[Manutencao],
+    abastecimentos: list[Abastecimento],
+) -> list[EventoKmOut]:
+    eventos: list[EventoKmOut] = []
+    for contrato, _cliente_nome in contratos:
+        if contrato.km_inicio is not None:
+            eventos.append(
+                EventoKmOut(
+                    data=contrato.data_inicio,
+                    km=contrato.km_inicio,
+                    origem="contrato_saida",
+                    descricao="KM de saída na locação",
+                )
+            )
+        if contrato.km_final is not None and contrato.data_fim_real is not None:
+            eventos.append(
+                EventoKmOut(
+                    data=contrato.data_fim_real,
+                    km=contrato.km_final,
+                    origem="contrato_devolucao",
+                    descricao="KM na devolução da locação",
+                )
+            )
+    for manutencao in manutencoes:
+        eventos.append(
+            EventoKmOut(
+                data=manutencao.data,
+                km=manutencao.km,
+                origem="manutencao",
+                descricao="Registrado em manutenção",
+            )
+        )
+    for abastecimento in abastecimentos:
+        eventos.append(
+            EventoKmOut(
+                data=abastecimento.data,
+                km=abastecimento.km,
+                origem="abastecimento",
+                descricao="Registrado em abastecimento",
+            )
+        )
+    eventos.sort(key=lambda e: e.data, reverse=True)
+    return eventos
+
+
+def _calcular_indicadores(
+    db: Session,
+    veiculo: Veiculo,
+    contratos: list[tuple[Contrato, str]],
+    manutencoes: list[Manutencao],
+    despesas: list[Despesa],
+    abastecimentos: list[Abastecimento],
+) -> IndicadoresVeiculoOut:
+    hoje = datetime.now(UTC).date()
+
+    receita_total = (
+        db.scalar(
+            select(func.coalesce(func.sum(Pagamento.valor), 0))
+            .join(Contrato, Contrato.id == Pagamento.contrato_id)
+            .where(Contrato.veiculo_id == veiculo.id, Pagamento.status == STATUS_PAGAMENTO_PAGO)
+        )
+        or Decimal("0")
+    )
+
+    custo_manutencao = sum((m.custo for m in manutencoes), Decimal("0"))
+    custo_despesas = sum((d.valor for d in despesas), Decimal("0"))
+    custo_abastecimento = sum((a.valor for a in abastecimentos), Decimal("0"))
+    custo_total = custo_manutencao + custo_despesas + custo_abastecimento
+
+    data_referencia = veiculo.data_entrada_frota or veiculo.created_at.date()
+    dias_desde_entrada = max(1, (hoje - data_referencia).days)
+
+    dias_locado = 0
+    for contrato, _cliente_nome in contratos:
+        if contrato.status not in (STATUS_ATIVO, STATUS_ENCERRADO):
+            continue
+        fim = contrato.data_fim_real.date() if contrato.data_fim_real else hoje
+        inicio = contrato.data_inicio.date()
+        dias_locado += max(0, (fim - inicio).days) or 1
+
+    dias_locado = min(dias_locado, dias_desde_entrada)
+    dias_parado = max(0, dias_desde_entrada - dias_locado)
+    taxa_utilizacao = round(Decimal(dias_locado) / Decimal(dias_desde_entrada) * 100, 2)
+
+    km_rodado = veiculo.km_atual - (veiculo.km_inicial or 0)
+    custo_por_km = round(custo_total / km_rodado, 2) if km_rodado > 0 else None
+
+    return IndicadoresVeiculoOut(
+        receita_total=receita_total,
+        custo_total=custo_total,
+        lucro=receita_total - custo_total,
+        custo_por_km=custo_por_km,
+        dias_desde_entrada=dias_desde_entrada,
+        dias_locado=dias_locado,
+        dias_parado=dias_parado,
+        taxa_utilizacao=taxa_utilizacao,
+    )
+
+
 def historico(db: Session, veiculo_id: uuid.UUID) -> HistoricoVeiculoOut:
-    obter(db, veiculo_id)  # garante 404 se o veículo não existir (ou estiver excluído)
+    veiculo = obter(db, veiculo_id)
 
     contratos = db.execute(
         select(Contrato, Cliente.nome)
@@ -175,6 +280,16 @@ def historico(db: Session, veiculo_id: uuid.UUID) -> HistoricoVeiculoOut:
         .all()
     )
 
+    abastecimentos = (
+        db.execute(
+            select(Abastecimento)
+            .where(Abastecimento.veiculo_id == veiculo_id, Abastecimento.deleted_at.is_(None))
+            .order_by(Abastecimento.data.desc())
+        )
+        .scalars()
+        .all()
+    )
+
     return HistoricoVeiculoOut(
         contratos=[
             HistoricoContratoOut(
@@ -196,4 +311,8 @@ def historico(db: Session, veiculo_id: uuid.UUID) -> HistoricoVeiculoOut:
         multas=[MultaOut.model_validate(m) for m in multas],
         sinistros=[SinistroOut.model_validate(s) for s in sinistros],
         danos=[DanoOut.model_validate(d) for d in danos],
+        eventos_km=_montar_eventos_km(contratos, manutencoes, abastecimentos),
+        indicadores=_calcular_indicadores(
+            db, veiculo, contratos, manutencoes, despesas, abastecimentos
+        ),
     )

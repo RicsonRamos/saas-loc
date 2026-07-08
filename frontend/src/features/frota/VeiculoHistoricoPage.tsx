@@ -8,11 +8,14 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { apiClient } from "@/core/api/client";
 import { formatarData, formatarDataHora, formatarMoeda } from "@/core/format";
 
+import { AbastecimentosSecao } from "./AbastecimentosSecao";
 import { DanosSecao } from "./DanosSecao";
 import { MultasSecao } from "./MultasSecao";
+import { PneusSecao } from "./PneusSecao";
 import { SinistrosSecao } from "./SinistrosSecao";
 import { StatusVeiculoBadge } from "./StatusVeiculoBadge";
 import type {
+  EventoKm,
   HistoricoContrato,
   HistoricoDespesa,
   HistoricoManutencao,
@@ -23,6 +26,23 @@ import type { Veiculo } from "./types";
 const contratoColumns = createColumnHelper<HistoricoContrato>();
 const manutencaoColumns = createColumnHelper<HistoricoManutencao>();
 const despesaColumns = createColumnHelper<HistoricoDespesa>();
+const eventoKmColumns = createColumnHelper<EventoKm>();
+
+const ROTULOS_ORIGEM_KM: Record<string, string> = {
+  contrato_saida: "Saída em locação",
+  contrato_devolucao: "Devolução de locação",
+  manutencao: "Manutenção",
+  abastecimento: "Abastecimento",
+};
+
+const colunasEventosKm = [
+  eventoKmColumns.accessor("data", { header: "Data", cell: (info) => formatarDataHora(info.getValue()) }),
+  eventoKmColumns.accessor("km", { header: "KM registrado" }),
+  eventoKmColumns.accessor("origem", {
+    header: "Origem",
+    cell: (info) => ROTULOS_ORIGEM_KM[info.getValue()] ?? info.getValue(),
+  }),
+];
 
 const colunasContratos = [
   contratoColumns.accessor("cliente_nome", { header: "Cliente" }),
@@ -124,6 +144,68 @@ export function VeiculoHistoricoPage() {
 
       {!carregando && !comErro && historicoQuery.data && (
         <div className="flex flex-col gap-8">
+          <section>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Indicadores
+            </h2>
+            <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Receita total</p>
+                <p className="text-sm font-semibold text-emerald-700">
+                  {formatarMoeda(historicoQuery.data.indicadores.receita_total)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Custo total</p>
+                <p className="text-sm font-semibold text-red-700">
+                  {formatarMoeda(historicoQuery.data.indicadores.custo_total)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Lucro</p>
+                <p className="text-sm font-semibold text-slate-900">
+                  {formatarMoeda(historicoQuery.data.indicadores.lucro)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Custo por KM</p>
+                <p className="text-sm font-semibold text-slate-900">
+                  {historicoQuery.data.indicadores.custo_por_km
+                    ? formatarMoeda(historicoQuery.data.indicadores.custo_por_km)
+                    : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Taxa de utilização
+                </p>
+                <p className="text-sm font-semibold text-slate-900">
+                  {historicoQuery.data.indicadores.taxa_utilizacao}%
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Dias locado</p>
+                <p className="text-sm font-semibold text-slate-900">
+                  {historicoQuery.data.indicadores.dias_locado}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Dias parado</p>
+                <p className="text-sm font-semibold text-slate-900">
+                  {historicoQuery.data.indicadores.dias_parado}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Dias desde entrada na frota
+                </p>
+                <p className="text-sm font-semibold text-slate-900">
+                  {historicoQuery.data.indicadores.dias_desde_entrada}
+                </p>
+              </div>
+            </div>
+          </section>
+
           {(() => {
             const contratoAtual = historicoQuery.data.contratos.find((c) => c.status === "ativo");
             if (!contratoAtual) return null;
@@ -216,6 +298,19 @@ export function VeiculoHistoricoPage() {
             )}
           </section>
 
+          <section>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Quilometragem
+            </h2>
+            {historicoQuery.data.eventos_km.length === 0 ? (
+              <EmptyState mensagem="Nenhum evento de quilometragem registrado ainda." />
+            ) : (
+              <DataTable columns={colunasEventosKm} data={historicoQuery.data.eventos_km} />
+            )}
+          </section>
+
+          {id && <AbastecimentosSecao veiculoId={id} />}
+          {id && <PneusSecao veiculoId={id} />}
           {id && <MultasSecao veiculoId={id} />}
           {id && <SinistrosSecao veiculoId={id} />}
           {id && <DanosSecao veiculoId={id} />}

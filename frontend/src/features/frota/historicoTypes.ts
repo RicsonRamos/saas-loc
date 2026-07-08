@@ -28,8 +28,28 @@ export interface HistoricoDespesa {
   descricao: string | null;
 }
 
+export interface EventoKm {
+  data: string;
+  km: number;
+  origem: string;
+  descricao: string;
+}
+
+export interface IndicadoresVeiculo {
+  receita_total: string;
+  custo_total: string;
+  lucro: string;
+  custo_por_km: string | null;
+  dias_desde_entrada: number;
+  dias_locado: number;
+  dias_parado: number;
+  taxa_utilizacao: string;
+}
+
 export interface HistoricoVeiculo {
   contratos: HistoricoContrato[];
   manutencoes: HistoricoManutencao[];
   despesas: HistoricoDespesa[];
+  eventos_km: EventoKm[];
+  indicadores: IndicadoresVeiculo;
 }

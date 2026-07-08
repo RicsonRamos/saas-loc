@@ -198,6 +198,24 @@ class HistoricoDespesaOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class EventoKmOut(BaseModel):
+    data: datetime
+    km: int
+    origem: str
+    descricao: str
+
+
+class IndicadoresVeiculoOut(BaseModel):
+    receita_total: Decimal
+    custo_total: Decimal
+    lucro: Decimal
+    custo_por_km: Decimal | None
+    dias_desde_entrada: int
+    dias_locado: int
+    dias_parado: int
+    taxa_utilizacao: Decimal
+
+
 class HistoricoVeiculoOut(BaseModel):
     contratos: list[HistoricoContratoOut]
     manutencoes: list[HistoricoManutencaoOut]
@@ -205,3 +223,5 @@ class HistoricoVeiculoOut(BaseModel):
     multas: list[MultaOut]
     sinistros: list[SinistroOut]
     danos: list[DanoOut]
+    eventos_km: list[EventoKmOut]
+    indicadores: IndicadoresVeiculoOut

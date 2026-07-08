@@ -173,6 +173,74 @@ def test_historico_veiculo_agrega_contratos_e_manutencoes(client, db_session):
     assert corpo["contratos"][0]["km_inicio"] == 1000
     assert len(corpo["manutencoes"]) == 1
     assert corpo["despesas"] == []
+    assert any(e["origem"] == "manutencao" and e["km"] == 900 for e in corpo["eventos_km"])
+    assert "indicadores" in corpo
+
+
+def test_indicadores_veiculo_receita_custo_e_lucro(client, db_session):
+    usuario = criar_usuario(db_session, role="administrador", email="admin12@teste.com")
+    headers = auth_headers(usuario)
+
+    veiculo = client.post(
+        "/api/v1/veiculos",
+        json={"placa": "IND1A23", "modelo": "Onix", "ano": 2023, "km_atual": 1000},
+        headers=headers,
+    ).json()
+    cliente = client.post(
+        "/api/v1/clientes",
+        json={"nome": "Cliente Indicadores", "documento": "99988877700"},
+        headers=headers,
+    ).json()
+    contrato = client.post(
+        "/api/v1/contratos",
+        json={
+            "cliente_id": cliente["id"],
+            "veiculo_id": veiculo["id"],
+            "data_inicio": "2026-10-01T10:00:00Z",
+            "data_fim_prevista": "2026-10-05T10:00:00Z",
+            "valor_diaria": "150.00",
+        },
+        headers=headers,
+    ).json()
+    client.patch(
+        f"/api/v1/contratos/{contrato['id']}/devolucao",
+        json={"data_fim_real": "2026-10-05T09:00:00Z", "km_final": 1400},
+        headers=headers,
+    )
+    client.post(
+        "/api/v1/financeiro/pagamentos",
+        json={"contrato_id": contrato["id"], "valor": "600.00", "data": "2026-10-05T10:00:00Z"},
+        headers=headers,
+    )
+    client.post(
+        "/api/v1/manutencoes",
+        json={
+            "veiculo_id": veiculo["id"],
+            "tipo": "preventiva",
+            "data": "2026-10-06T09:00:00Z",
+            "km": 1400,
+            "custo": "100.00",
+        },
+        headers=headers,
+    )
+    client.post(
+        "/api/v1/abastecimentos",
+        json={
+            "veiculo_id": veiculo["id"],
+            "data": "2026-10-06T10:00:00Z",
+            "litros": "20.000",
+            "valor": "120.00",
+            "km": 1400,
+        },
+        headers=headers,
+    )
+
+    resp = client.get(f"/api/v1/veiculos/{veiculo['id']}/historico", headers=headers)
+    assert resp.status_code == 200
+    indicadores = resp.json()["indicadores"]
+    assert indicadores["receita_total"] == "600.00"
+    assert indicadores["custo_total"] == "220.00"
+    assert indicadores["lucro"] == "380.00"
 
 
 def test_criar_veiculo_com_dossie_completo(client, db_session):

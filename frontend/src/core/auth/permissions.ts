@@ -18,6 +18,9 @@ export const ROLE_PERMISSIONS: Record<string, Set<string> | "*"> = {
     "sinistros:registrar",
     "danos:visualizar",
     "danos:registrar",
+    "abastecimentos:visualizar",
+    "abastecimentos:registrar",
+    "pneus:visualizar",
   ]),
   financeiro: new Set([
     "frota:visualizar",
@@ -28,6 +31,8 @@ export const ROLE_PERMISSIONS: Record<string, Set<string> | "*"> = {
     "multas:visualizar",
     "sinistros:visualizar",
     "danos:visualizar",
+    "abastecimentos:visualizar",
+    "pneus:visualizar",
   ]),
   mecanico: new Set([
     "frota:visualizar",
@@ -36,6 +41,9 @@ export const ROLE_PERMISSIONS: Record<string, Set<string> | "*"> = {
     "sinistros:visualizar",
     "danos:visualizar",
     "danos:registrar",
+    "abastecimentos:visualizar",
+    "pneus:visualizar",
+    "pneus:registrar",
   ]),
 };
 

@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api import (
+    abastecimentos,
     auth,
     clientes,
     contratos,
@@ -11,6 +12,7 @@ from app.api import (
     manutencoes,
     motoristas,
     multas,
+    pneus,
     sinistros,
 )
 
@@ -26,3 +28,5 @@ api_router.include_router(financeiro.router)
 api_router.include_router(multas.router)
 api_router.include_router(sinistros.router)
 api_router.include_router(danos.router)
+api_router.include_router(abastecimentos.router)
+api_router.include_router(pneus.router)
