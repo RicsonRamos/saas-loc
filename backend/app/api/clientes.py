@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import require_permission
-from app.schemas.cliente import ClienteCreate, ClienteOut, ClienteUpdate
+from app.schemas.cliente import ClienteCreate, ClienteOut, ClienteUpdate, HistoricoClienteOut
 from app.schemas.common import Page, PageMeta
 from app.services import cliente_service
 
@@ -16,10 +16,11 @@ router = APIRouter(prefix="/clientes", tags=["clientes"])
 def listar_clientes(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
+    busca: str | None = Query(None, description="Busca por nome, CPF/CNPJ ou telefone"),
     db: Session = Depends(get_db),
     _: object = Depends(require_permission("clientes:visualizar")),
 ) -> Page[ClienteOut]:
-    itens, total = cliente_service.listar(db, page, limit)
+    itens, total = cliente_service.listar(db, page, limit, busca)
     data = [ClienteOut.model_validate(c) for c in itens]
     return Page(data=data, meta=PageMeta(page=page, limit=limit, total=total))
 
@@ -50,6 +51,15 @@ def atualizar_cliente(
     _: object = Depends(require_permission("clientes:editar")),
 ) -> ClienteOut:
     return cliente_service.atualizar(db, cliente_id, payload)
+
+
+@router.get("/{cliente_id}/historico", response_model=HistoricoClienteOut)
+def obter_historico_cliente(
+    cliente_id: UUID,
+    db: Session = Depends(get_db),
+    _: object = Depends(require_permission("clientes:visualizar")),
+) -> HistoricoClienteOut:
+    return cliente_service.historico(db, cliente_id)
 
 
 @router.delete("/{cliente_id}", status_code=status.HTTP_204_NO_CONTENT)

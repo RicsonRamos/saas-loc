@@ -1,5 +1,6 @@
 import { Navigate, Route, BrowserRouter, Routes } from "react-router-dom";
 
+import { ClienteHistoricoPage } from "@/features/cadastros/ClienteHistoricoPage";
 import { ClientesPage } from "@/features/cadastros/ClientesPage";
 import { MotoristasPage } from "@/features/cadastros/MotoristasPage";
 import { ContratosPage } from "@/features/contratos/ContratosPage";
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/frota" element={<VeiculosPage />} />
           <Route path="/frota/:id" element={<VeiculoHistoricoPage />} />
           <Route path="/clientes" element={<ClientesPage />} />
+          <Route path="/clientes/:id" element={<ClienteHistoricoPage />} />
           <Route path="/motoristas" element={<MotoristasPage />} />
           <Route path="/contratos" element={<ContratosPage />} />
           <Route path="/manutencoes" element={<ManutencoesPage />} />
