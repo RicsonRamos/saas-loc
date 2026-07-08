@@ -49,5 +49,6 @@ export function extrairMensagemErro(error: unknown): string {
       return problema.title;
     }
   }
+  console.error(error);
   return "Ocorreu um erro inesperado. Tente novamente.";
 }
