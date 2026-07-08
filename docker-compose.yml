@@ -1,15 +1,49 @@
-version: '3.8'
-
 services:
-  app:
-    build: .
-    container_name: locadora_erp
-    network_mode: host
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      - DISPLAY=${DISPLAY:-:0}
+      POSTGRES_USER: locadora
+      POSTGRES_PASSWORD: locadora
+      POSTGRES_DB: locadora
+    ports:
+      - "5432:5432"
     volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix:ro
-      - .:/app
-    device_cgroup_rules:
-      - 'c 116:* rwm'
-    privileged: true
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U locadora"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://locadora:locadora@db:5432/locadora
+      JWT_SECRET_KEY: change-me-in-production
+      ENVIRONMENT: development
+      CORS_ORIGINS: http://localhost:5173
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000/api/v1
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  db_data:

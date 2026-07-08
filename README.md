@@ -1,213 +1,171 @@
-# 🚗 Locadora ERP Desktop (Local)
+# Locadora SaaS
 
-**Sistema ERP Desktop/Local multi-tenant para gestão de locadoras de veículos.**
+Sistema de gestão para uma locadora de veículos gerenciar **frota**, **contratos/locações**, **manutenções** e **financeiro/receitas**. Aplicação single-tenant (uma empresa, com filiais opcionais) pensada para um time pequeno operar com segurança nos pontos que realmente importam: nunca alocar o mesmo veículo duas vezes, nunca perder precisão em dinheiro, e nunca deixar dado sensível vazar para quem não tem permissão.
 
-Plataforma unificada executada localmente usando **SQLite** como banco de dados embarcado e servindo o frontend **React** diretamente a partir do próprio servidor **Spring Boot**.
+Os documentos em [`docs/`](docs/) são a fonte de verdade do projeto — arquitetura, modelo de dados, segurança, testes e roadmap por fases. Este README cobre apenas "como rodar e usar".
 
----
+## Módulos
 
-## 📋 Índice
+| Módulo | O que cobre |
+|---|---|
+| **Frota** | Cadastro de veículos, status (disponível / alugado / em manutenção / baixado), quilometragem |
+| **Clientes / Motoristas** | Cadastros de apoio usados na emissão de contratos |
+| **Contratos / Locações** | Fluxo único reserva → ativo → devolução (ou cancelamento), com **prevenção real de dupla alocação** |
+| **Manutenções** | Histórico preventivo/corretivo por veículo, custo, oficina, e bloqueio automático do veículo enquanto em manutenção |
+| **Financeiro** | Pagamentos (com estorno controlado), despesas, e relatório de rentabilidade por veículo |
 
-- [Visão Geral](#-visão-geral)
-- [Funcionalidades](#-funcionalidades)
-- [Arquitetura Local](#-arquitetura-local)
-- [Stack Tecnológica](#-stack-tecnológica)
-- [Pré-requisitos](#-pré-requisitos)
-- [Estrutura do Projeto](#-estrutura-do-projeto)
-- [Instalação e Execução](#-instalação-e-execução)
-- [Configuração Local](#-configuração-local)
-- [Backup Automatizado](#-backup-automatizado)
-- [Empacotamento Desktop (Locadora.exe)](#-empacotamento-desktop-locadoraexe)
-- [Segurança](#-segurança)
-- [Licença](#-licença)
+## Stack
 
----
+**Backend** — Python 3.12 · FastAPI · SQLAlchemy 2.0 · Alembic · Pydantic v2 · Pytest · PostgreSQL 16
+**Frontend** — React 19 · TypeScript · Vite 8 · TanStack Query · React Hook Form + Zod · TanStack Table · Tailwind CSS v4 · Recharts
 
-## 🎯 Visão Geral
+Arquitetura em 3 camadas no backend (`api` → `services` → `models`), sem Hexagonal/DDD tático — ver [`docs/01-ARQUITETURA.md`](docs/01-ARQUITETURA.md) para a justificativa. Frontend feature-driven — ver [`docs/05-FRONTEND.md`](docs/05-FRONTEND.md).
 
-O **Locadora ERP Desktop** é um sistema completo projetado para rodar em computadores locais sem a necessidade de instalar servidores de banco de dados pesados, Docker ou proxies reversos como Nginx. 
+## Pré-requisitos
 
-### 🚀 Estado Atual
-A aplicação foi **100% portada para Desktop/SQLite**. 
-* ✅ Todas as funcionalidades (Reservas, Contratos, Financeiro, Manutenção, Alertas e Auditoria) operacionais em modo Single-Tenant local.
-* ✅ Todos os testes unitários passando.
-* ✅ Aplicativo executável (`LocadoraERP.exe`) gerado via jpackage na pasta `dist/`.
+- **Opção A — Docker:** Docker Desktop com Docker Compose v2.
+- **Opção B — Local (sem Docker):** Python 3.12+, Node.js 22+, PostgreSQL 16+.
 
-Toda a infraestrutura é empacotada no executável Java: o banco de dados é um arquivo SQLite local e as páginas React são servidas diretamente pelo Spring Boot.
+## Rodando com Docker Compose
 
-### Diferenciais Operacionais
-- **Lucro por veículo** — saiba exatamente quanto cada carro rende.
-- **Custo por quilômetro** — controle granular de despesas.
-- **Payback do investimento** — tempo estimado de retorno por veículo.
-- **Comparação FIPE vs valor pago** — decisões de compra/venda embasadas.
-- **Taxa de ocupação** — otimize sua frota.
-- **Multi-tenant** — suporte a múltiplas filiais ou empresas isoladas por `tenant_id` no mesmo banco local.
-
----
-
-## ✨ Funcionalidades
-
-| Módulo | Descrição |
-|--------|-----------|
-| **Usuários** | Cadastro, login, RBAC granular com permissões e profiles (Admin, Gerente, Financeiro, Operador) |
-| **Clientes** | Pessoa física/jurídica, CNH categoria, bloqueio de clientes, observações |
-| **Veículos** | Frota completa (placa, chassi, Renavam, quilometragem, combustível, câmbio, capacidade do tanque, revisões, IPVA, licenciamento, CRLV) |
-| **Contratos** | Locação com período, caução, km inicial/final, vistoria de devolução, multas e assinatura |
-| **Reservas** | Módulo de agendamentos com validação de sobreposição de frota e conversão para contrato |
-| **Uploads** | Armazenamento de arquivos no diretório local seguro com validação de mime-type e hash SHA-256 |
-| **Checklists** | Vistorias dinâmicas em JSON para Retirada e Devolução com comparação automática de avarias |
-| **Financeiro** | Caixa com despesas/receitas, centro de custo, formas de pagamento, parcelas e comprovantes |
-| **Manutenção** | Cadastro de oficinas, peças, custos e desvio automático de despesa para o financeiro |
-| **Alertas** | Notificação automática de CNHs vencendo em 30 dias e prazos de seguros/IPVA de veículos |
-| **Auditoria** | Registro de alterações de registros com Correlation ID, old/new data em JSON, IP e User-Agent |
-
----
-
-## 🏗 Arquitetura Local
-
-```
-┌──────────────────────────────────────┐
-│             Locadora.exe             │
-│  ┌──────────────┐     ┌───────────┐  │
-│  │   Frontend   │◀───▶│  Backend  │  │
-│  │ React Static │     │Spring Boot│  │
-│  └──────────────┘     └─────┬─────┘  │
-│                             │        │
-│                       ┌─────▼─────┐  │
-│                       │  SQLite   │  │
-│                       │locadora.db│  │
-│                       └───────────┘  │
-└──────────────────────────────────────┘
+```bash
+cp .env.example .env
+docker compose up --build
 ```
 
-A arquitetura preserva os princípios de **Clean Architecture** e isolamento por submódulos (Controller, Service, Repository, DTO). A persistência é realizada em um arquivo SQLite localizado em `./database/locadora.db` utilizando o dialeto do Hibernate para SQLite.
+- Backend (Swagger): http://localhost:8000/docs
+- Frontend: http://localhost:5173
+- PostgreSQL fica disponível em `localhost:5432` (usuário/senha/database: `locadora`)
 
----
+O `docker compose up` já sobe o Postgres, mas **as migrações e o usuário admin não rodam automaticamente** — depois do primeiro `up`, rode:
 
-## 🛠 Stack Tecnológica
-
-### Backend
-- **Java 21 LTS**
-- **Spring Boot 3.3.0** (Spring Security, Data JPA, Actuator)
-- **SQLite JDBC Driver**
-- **Hibernate ORM / Dialeto de Comunidade SQLite**
-- **MapStruct 1.5** (Mapeamento DTO ↔ Entity)
-- **Lombok**
-- **JJWT 0.12** (Segurança Stateless JWT)
-- **SpringDoc OpenAPI 2.5** (Swagger)
-
-### Frontend
-- **React 18**
-- **TypeScript 5.5**
-- **Vite 5.3** (Build pipeline)
-- **Tailwind CSS & Shadcn/UI** (Interface)
-- **React Router 6**
-
----
-
-## 📦 Pré-requisitos
-
-Para rodar ou construir o projeto em ambiente de desenvolvimento:
-- **Java JDK 21**
-- **Node.js 20 LTS**
-- **Maven 3.9+**
-
----
-
-## 📁 Estrutura do Projeto
-
-```
-saas_locadora/
-├── backend/                  # Código Spring Boot
-│   └── src/main/resources/   # Configurações e estáticos embarcados
-├── frontend/                 # Código React + Vite
-├── database/                 # Pasta criada automaticamente com o SQLite (locadora.db)
-├── logs/                     # Pasta criada automaticamente contendo logs diários
-├── backup/                   # Backups gerados pelo sistema (.db)
-└── config/                   # Configurações locais (application.properties)
+```bash
+docker compose exec backend alembic upgrade head
+docker compose exec backend python create_admin.py admin@locadora.com "senha-forte" "Administrador"
 ```
 
----
+## Rodando sem Docker
 
-## 🚀 Instalação e Execução
+### 1. Banco de dados
 
-### 1. Build do Frontend
-Compile o frontend para que os arquivos estáticos sejam transferidos para o backend:
+Suba um PostgreSQL 16 local (pode ser via instalador oficial, `winget install PostgreSQL.PostgreSQL.16` no Windows, ou um container avulso) e crie o usuário/bancos:
+
+```sql
+CREATE USER locadora WITH PASSWORD 'locadora' CREATEDB;
+CREATE DATABASE locadora OWNER locadora;
+CREATE DATABASE locadora_test OWNER locadora;  -- usado pelos testes automatizados
+```
+
+> A extensão `btree_gist` (necessária para a trava anti-dupla-reserva) é habilitada automaticamente pela migração — não precisa criar manualmente.
+
+### 2. Backend
+
+```bash
+cd backend
+python -m venv .venv
+.venv/Scripts/activate        # Windows — use `source .venv/bin/activate` no Linux/Mac
+pip install -r requirements.txt
+
+cp ../.env.example .env       # ajuste DATABASE_URL se necessário
+alembic upgrade head
+python create_admin.py admin@locadora.com "senha-forte" "Administrador"
+
+uvicorn app.main:app --reload --port 8000
+```
+
+Swagger em http://127.0.0.1:8000/docs.
+
+> **Windows:** use `127.0.0.1` em vez de `localhost` ao testar a API — em algumas máquinas `localhost` resolve para `::1` e pode cair em outro serviço já ocupando a porta.
+
+### 3. Frontend
+
 ```bash
 cd frontend
 npm install
+cp .env.example .env          # já aponta para http://localhost:8000/api/v1
+npm run dev
+```
+
+Aplicação em http://localhost:5173. Faça login com o usuário admin criado no passo 2.
+
+## Variáveis de ambiente
+
+| Variável | Onde é usada | Descrição |
+|---|---|---|
+| `DATABASE_URL` | backend | String de conexão SQLAlchemy/psycopg com o Postgres |
+| `JWT_SECRET_KEY` | backend | Chave de assinatura dos tokens — **troque em produção** |
+| `JWT_ALGORITHM` | backend | Algoritmo JWT (default `HS256`) |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | backend | Validade do access token |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | backend | Validade do refresh token |
+| `ENVIRONMENT` | backend | `development` / `production` |
+| `CORS_ORIGINS` | backend | Origens permitidas, separadas por vírgula |
+| `VITE_API_BASE_URL` | frontend | URL base da API consumida pelo frontend |
+
+## Papéis e permissões (RBAC)
+
+| Papel | Pode fazer |
+|---|---|
+| `administrador` | Tudo |
+| `operador` | Frota, clientes, motoristas, contratos (emitir/cancelar), visualizar manutenções |
+| `financeiro` | Visualizar frota/contratos, lançar pagamentos/despesas, aprovar estornos |
+| `mecanico` | Visualizar frota, registrar manutenções |
+
+Autorização é sempre checada no backend (`Depends(require_permission("modulo:acao"))`); o frontend só esconde ações que o usuário não pode executar — ver [`docs/03-AUTENTICACAO-AUTORIZACAO.md`](docs/03-AUTENTICACAO-AUTORIZACAO.md).
+
+## A regra mais importante do sistema
+
+Nenhum veículo pode ser alocado a dois contratos com período sobreposto — isso é garantido por uma **constraint de exclusão no PostgreSQL** (`contratos_sem_overlap`, `EXCLUDE USING gist`), não apenas por validação em código. Duas requisições simultâneas tentando reservar o mesmo veículo: o banco aceita uma e rejeita a outra com `409 VEICULO_INDISPONIVEL`, mesmo sob concorrência real.
+
+Isso é coberto por um teste automatizado com threads reais e conexões independentes: `backend/tests/test_contratos_concorrencia.py`.
+
+## Testes
+
+**Backend** (precisa do Postgres rodando e do banco `locadora_test` criado):
+```bash
+cd backend
+pytest -v
+```
+
+**Frontend**:
+```bash
+cd frontend
+npm run typecheck
+npm run lint
 npm run build
 ```
-*O build do Vite exporta os arquivos estáticos compilados para `backend/src/main/resources/static/` automaticamente.*
 
-### 2. Executar o Backend
-Inicie a aplicação Spring Boot usando o profile `desktop`:
-```bash
-cd ../backend
-mvn clean package
-java -jar target/locadora-backend-0.1.0-SNAPSHOT.jar --spring.profiles.active=desktop
+## Estrutura do repositório
+
+```
+.
+├── docs/                          # Arquitetura, modelo de dados, segurança, roadmap (fonte de verdade)
+├── backend/
+│   ├── app/
+│   │   ├── api/                   # Routers FastAPI (1 arquivo por módulo de negócio)
+│   │   ├── services/              # Regras de negócio e transações
+│   │   ├── models/                # SQLAlchemy (entidades + metadados de auditoria)
+│   │   ├── schemas/                # Pydantic (entrada/saída de cada endpoint)
+│   │   └── core/                  # config, database, security, permissions, deps
+│   ├── migrations/                # Alembic (schema inicial incluindo a trava anti-overlap)
+│   ├── tests/                     # pytest — concorrência, fluxo de contrato, financeiro, auth
+│   └── create_admin.py            # Script para criar o primeiro usuário administrador
+├── frontend/
+│   └── src/
+│       ├── core/                  # api client, auth (contexto + RBAC no cliente), providers
+│       ├── components/ui/         # Button, DataTable, PaginationControls, States...
+│       ├── features/              # frota, cadastros (clientes/motoristas), contratos, manutencoes, financeiro
+│       └── routes/                # Proteção de rota autenticada
+└── docker-compose.yml             # Postgres + backend + frontend para ambiente local
 ```
 
-### 3. Acessar a aplicação
-Abra o navegador e acesse:
-```
-http://localhost:8080
-```
+## Roadmap
 
----
+O projeto é executado por fases curtas e entregáveis — ver [`docs/09-ROADMAP-FASES.md`](docs/09-ROADMAP-FASES.md). Estado atual: **Fase 0 e 1 concluídas** (fundação + CRUD dos 4 módulos), com o fluxo transacional completo de locação, manutenção e financeiro já funcional (Fase 2 e 3 do roadmap).
 
-## ⚙ Configuração Local
+## Solução de problemas
 
-Na primeira execução, o diretório `./config` e o arquivo `./config/application.properties` serão criados automaticamente com as seguintes propriedades padrão:
-```properties
-# Configurações Locais - Locadora ERP Desktop
-server.port=8080
-app.company.name=Locadora Local
-app.language=pt-BR
-app.timezone=America/Sao_Paulo
-```
-Você pode alterar a porta de execução ou o fuso horário modificando diretamente esse arquivo e reiniciando a aplicação.
-
----
-
-## 💾 Backup Automatizado
-
-O sistema possui um módulo nativo de backup físico do arquivo SQLite. O backup pode ser disparado a qualquer momento enviando uma requisição HTTP POST para `/api/v1/backups` (acesso restrito aos perfis `ADMIN` e `GERENTE`).
-
-O backup é gerado na pasta `./backup` no seguinte formato:
-```
-backup/locadora-AAAA-MM-DD-HH-mm.db
-```
-
----
-
-## 📦 Empacotamento Desktop (Locadora.exe)
-
-O projeto está estruturado para permitir a geração de uma imagem nativa empacotada usando a ferramenta `jpackage` do JDK 21.
-
-Exemplo de comando de geração do instalador nativo no Windows:
-```bash
-jpackage --name "LocadoraERP" \
-         --input backend/target \
-         --main-jar locadora-backend-0.1.0-SNAPSHOT.jar \
-         --main-class com.locadora.Application \
-         --type exe \
-         --win-shortcut \
-         --win-menu
-```
-
----
-
-## 🔒 Segurança
-
-Toda a segurança corporativa foi mantida:
-- **Criptografia de Senhas**: As senhas dos usuários são salvas com hash BCrypt.
-- **Autorização por Perfil/Permissão**: O acesso às ações é validado no backend através de anotações `@PreAuthorize("hasAuthority('...')")`.
-- **Sessões Isoladas**: Autenticação feita via JWT contendo informações do usuário e do Tenant ID ao qual pertence.
-- **Isolamento de Dados**: O banco de dados local SQLite possui suporte multi-tenant, permitindo separar filiais por `tenant_id`.
-
----
-
-## 📄 Licença
-
-Este projeto é desenvolvido sob licença comercial privada. Uso não autorizado é proibido.
+- **`ModuleNotFoundError: email_validator`** ao importar o backend → `pip install email-validator` (já está no `requirements.txt`; reinstale as dependências).
+- **Alias `@/...` não resolve no `npm run dev`** → confirme que `frontend/vite.config.ts` tem `resolve.alias` apontando `@` para `./src`; rode `rm -rf node_modules/.vite` e reinicie o dev server.
+- **`localhost` cai em outro serviço na porta 8000/5173** → use `127.0.0.1` explicitamente, ou libere a porta (`netstat -ano | findstr :8000` no Windows).
+- **Erro de constraint `contratos_sem_overlap` não existe** → rode `alembic upgrade head`; a extensão `btree_gist` e a constraint são criadas na migração `0001`.
+- **Testes do backend falhando por dado duplicado** → confirme que o banco `locadora_test` existe e está limpo; os testes recriam o schema a cada sessão de execução.
