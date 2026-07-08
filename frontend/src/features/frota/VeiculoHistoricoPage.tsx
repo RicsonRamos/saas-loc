@@ -124,6 +124,65 @@ export function VeiculoHistoricoPage() {
 
       {!carregando && !comErro && historicoQuery.data && (
         <div className="flex flex-col gap-8">
+          {(() => {
+            const contratoAtual = historicoQuery.data.contratos.find((c) => c.status === "ativo");
+            if (!contratoAtual) return null;
+            const dias = Math.max(
+              1,
+              Math.ceil(
+                (Date.now() - new Date(contratoAtual.data_inicio).getTime()) /
+                  (1000 * 60 * 60 * 24)
+              )
+            );
+            return (
+              <section>
+                <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+                  Locação atual
+                </h2>
+                <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Cliente</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {contratoAtual.cliente_nome}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Saída</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {formatarDataHora(contratoAtual.data_inicio)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      Devolução prevista
+                    </p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {formatarDataHora(contratoAtual.data_fim_prevista)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Diária</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {formatarMoeda(contratoAtual.valor_diaria)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      Dias locado até agora
+                    </p>
+                    <p className="text-sm font-semibold text-slate-900">{dias}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500">KM de saída</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {contratoAtual.km_inicio ?? "—"}
+                    </p>
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
+
           <section>
             <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
               Locações

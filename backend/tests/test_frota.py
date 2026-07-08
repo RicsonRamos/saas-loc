@@ -175,6 +175,89 @@ def test_historico_veiculo_agrega_contratos_e_manutencoes(client, db_session):
     assert corpo["despesas"] == []
 
 
+def test_criar_veiculo_com_dossie_completo(client, db_session):
+    usuario = criar_usuario(db_session, role="administrador", email="admin10@teste.com")
+    headers = auth_headers(usuario)
+
+    resp = client.post(
+        "/api/v1/veiculos",
+        json={
+            "placa": "DOS1A23",
+            "modelo": "Corolla",
+            "ano": 2024,
+            "marca": "Toyota",
+            "versao": "XEI",
+            "ano_fabricacao": 2023,
+            "portas": 4,
+            "capacidade_passageiros": 5,
+            "motor": "2.0",
+            "potencia": "177cv",
+            "data_aquisicao": "2024-01-10",
+            "valor_compra": "135000.00",
+            "fornecedor": "Toyota Concessionaria",
+            "km_inicial": 10,
+            "proprietario": "Locadora XPTO",
+            "crlv_numero": "123456",
+            "ipva_vencimento": "2027-01-31",
+            "alienado": True,
+            "alienante": "Banco Y",
+            "seguradora": "Porto Seguro",
+            "apolice_numero": "AP-999",
+            "seguro_franquia": "2500.00",
+            "seguro_cobertura": "Compreensiva",
+            "seguro_contato": "0800-123456",
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    corpo = resp.json()
+    assert corpo["ano_fabricacao"] == 2023
+    assert corpo["valor_compra"] == "135000.00"
+    assert corpo["alienado"] is True
+    assert corpo["seguradora"] == "Porto Seguro"
+
+
+def test_busca_e_filtros_na_listagem_de_veiculos(client, db_session):
+    usuario = criar_usuario(db_session, role="administrador", email="admin11@teste.com")
+    headers = auth_headers(usuario)
+
+    client.post(
+        "/api/v1/veiculos",
+        json={
+            "placa": "FLT1A23",
+            "modelo": "Corolla",
+            "ano": 2024,
+            "marca": "Toyota",
+            "categoria": "Sedan",
+        },
+        headers=headers,
+    )
+    client.post(
+        "/api/v1/veiculos",
+        json={
+            "placa": "FLT2A23",
+            "modelo": "Onix",
+            "ano": 2022,
+            "marca": "Chevrolet",
+            "categoria": "Hatch",
+        },
+        headers=headers,
+    )
+
+    resp_busca = client.get("/api/v1/veiculos?busca=Corolla", headers=headers)
+    assert resp_busca.json()["meta"]["total"] == 1
+
+    resp_marca = client.get("/api/v1/veiculos?marca=Chevrolet", headers=headers)
+    assert resp_marca.json()["meta"]["total"] == 1
+    assert resp_marca.json()["data"][0]["placa"] == "FLT2A23"
+
+    resp_ano = client.get("/api/v1/veiculos?ano=2024", headers=headers)
+    assert resp_ano.json()["meta"]["total"] == 1
+
+    resp_categoria = client.get("/api/v1/veiculos?categoria=Hatch", headers=headers)
+    assert resp_categoria.json()["meta"]["total"] == 1
+
+
 def test_remover_veiculo_soft_delete_some_da_listagem(client, db_session):
     usuario = criar_usuario(db_session, role="administrador", email="admin3@teste.com")
     headers = auth_headers(usuario)

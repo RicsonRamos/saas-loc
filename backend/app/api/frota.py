@@ -24,10 +24,17 @@ def listar_veiculos(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     status_filtro: str | None = Query(None, alias="status"),
+    busca: str | None = Query(None, description="Busca por placa, modelo ou chassi"),
+    marca: str | None = None,
+    categoria: str | None = None,
+    ano: int | None = None,
+    filial_id: str | None = None,
     db: Session = Depends(get_db),
     _: object = Depends(require_permission("frota:visualizar")),
 ) -> Page[VeiculoOut]:
-    itens, total = veiculo_service.listar(db, page, limit, status_filtro)
+    itens, total = veiculo_service.listar(
+        db, page, limit, status_filtro, busca, marca, categoria, ano, filial_id
+    )
     data = [_para_saida(v) for v in itens]
     return Page(data=data, meta=PageMeta(page=page, limit=limit, total=total))
 

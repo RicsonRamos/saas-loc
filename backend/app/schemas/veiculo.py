@@ -26,6 +26,34 @@ class VeiculoCreate(BaseModel):
     vencimento_licenciamento: date | None = None
     vencimento_seguro: date | None = None
 
+    versao: str | None = Field(default=None, max_length=60)
+    ano_fabricacao: int | None = Field(default=None, ge=1950, le=2100)
+    portas: int | None = Field(default=None, ge=0, le=10)
+    capacidade_passageiros: int | None = Field(default=None, ge=0, le=100)
+    motor: str | None = Field(default=None, max_length=60)
+    potencia: str | None = Field(default=None, max_length=30)
+
+    data_aquisicao: date | None = None
+    valor_compra: Decimal | None = Field(default=None, ge=0)
+    fornecedor: str | None = Field(default=None, max_length=150)
+    forma_aquisicao: str | None = Field(default=None, max_length=30)
+    km_inicial: int | None = Field(default=None, ge=0)
+    proprietario: str | None = Field(default=None, max_length=150)
+    data_entrada_frota: date | None = None
+    garantia_fabrica_ate: date | None = None
+    garantia_concessionaria_ate: date | None = None
+
+    crlv_numero: str | None = Field(default=None, max_length=30)
+    ipva_vencimento: date | None = None
+    alienado: bool = False
+    alienante: str | None = Field(default=None, max_length=150)
+
+    seguradora: str | None = Field(default=None, max_length=100)
+    apolice_numero: str | None = Field(default=None, max_length=40)
+    seguro_franquia: Decimal | None = Field(default=None, ge=0)
+    seguro_cobertura: str | None = None
+    seguro_contato: str | None = Field(default=None, max_length=100)
+
     @field_validator("placa")
     @classmethod
     def placa_maiuscula(cls, v: str) -> str:
@@ -47,6 +75,34 @@ class VeiculoUpdate(BaseModel):
     cambio: str | None = Field(default=None, max_length=30)
     vencimento_licenciamento: date | None = None
     vencimento_seguro: date | None = None
+
+    versao: str | None = Field(default=None, max_length=60)
+    ano_fabricacao: int | None = Field(default=None, ge=1950, le=2100)
+    portas: int | None = Field(default=None, ge=0, le=10)
+    capacidade_passageiros: int | None = Field(default=None, ge=0, le=100)
+    motor: str | None = Field(default=None, max_length=60)
+    potencia: str | None = Field(default=None, max_length=30)
+
+    data_aquisicao: date | None = None
+    valor_compra: Decimal | None = Field(default=None, ge=0)
+    fornecedor: str | None = Field(default=None, max_length=150)
+    forma_aquisicao: str | None = Field(default=None, max_length=30)
+    km_inicial: int | None = Field(default=None, ge=0)
+    proprietario: str | None = Field(default=None, max_length=150)
+    data_entrada_frota: date | None = None
+    garantia_fabrica_ate: date | None = None
+    garantia_concessionaria_ate: date | None = None
+
+    crlv_numero: str | None = Field(default=None, max_length=30)
+    ipva_vencimento: date | None = None
+    alienado: bool | None = None
+    alienante: str | None = Field(default=None, max_length=150)
+
+    seguradora: str | None = Field(default=None, max_length=100)
+    apolice_numero: str | None = Field(default=None, max_length=40)
+    seguro_franquia: Decimal | None = Field(default=None, ge=0)
+    seguro_cobertura: str | None = None
+    seguro_contato: str | None = Field(default=None, max_length=100)
 
     @field_validator("status")
     @classmethod
@@ -73,6 +129,35 @@ class VeiculoOut(BaseModel):
     cambio: str | None
     vencimento_licenciamento: date | None
     vencimento_seguro: date | None
+
+    versao: str | None
+    ano_fabricacao: int | None
+    portas: int | None
+    capacidade_passageiros: int | None
+    motor: str | None
+    potencia: str | None
+
+    data_aquisicao: date | None
+    valor_compra: Decimal | None
+    fornecedor: str | None
+    forma_aquisicao: str | None
+    km_inicial: int | None
+    proprietario: str | None
+    data_entrada_frota: date | None
+    garantia_fabrica_ate: date | None
+    garantia_concessionaria_ate: date | None
+
+    crlv_numero: str | None
+    ipva_vencimento: date | None
+    alienado: bool
+    alienante: str | None
+
+    seguradora: str | None
+    apolice_numero: str | None
+    seguro_franquia: Decimal | None
+    seguro_cobertura: str | None
+    seguro_contato: str | None
+
     created_at: datetime
     updated_at: datetime
 

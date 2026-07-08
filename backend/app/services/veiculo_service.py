@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, date, datetime
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.exceptions import NotFoundError
@@ -60,11 +60,36 @@ def criar(db: Session, payload: VeiculoCreate) -> Veiculo:
 
 
 def listar(
-    db: Session, page: int, limit: int, status: str | None = None
+    db: Session,
+    page: int,
+    limit: int,
+    status: str | None = None,
+    busca: str | None = None,
+    marca: str | None = None,
+    categoria: str | None = None,
+    ano: int | None = None,
+    filial_id: str | None = None,
 ) -> tuple[list[Veiculo], int]:
     stmt = select(Veiculo).where(Veiculo.deleted_at.is_(None)).order_by(Veiculo.created_at.desc())
     if status:
         stmt = stmt.where(Veiculo.status == status)
+    if busca:
+        termo = f"%{busca}%"
+        stmt = stmt.where(
+            or_(
+                Veiculo.placa.ilike(termo),
+                Veiculo.modelo.ilike(termo),
+                Veiculo.chassi.ilike(termo),
+            )
+        )
+    if marca:
+        stmt = stmt.where(Veiculo.marca == marca)
+    if categoria:
+        stmt = stmt.where(Veiculo.categoria == categoria)
+    if ano:
+        stmt = stmt.where(Veiculo.ano == ano)
+    if filial_id:
+        stmt = stmt.where(Veiculo.filial_id == filial_id)
     return paginar(db, stmt, page, limit)
 
 
