@@ -4,7 +4,7 @@ from app.core.storage import garantir_buckets
 from tests.conftest import auth_headers, criar_usuario
 
 
-def _minio_disponivel() -> bool:
+def _storage_disponivel() -> bool:
     try:
         garantir_buckets()
         return True
@@ -157,8 +157,8 @@ def test_comparacao_sem_devolucao_retorna_409(client, db_session):
 
 
 @pytest.mark.skipif(
-    not _minio_disponivel(),
-    reason="MinIO indisponível (suba `docker compose up minio` para rodar este teste)",
+    not _storage_disponivel(),
+    reason="Storage indisponível (configure STORAGE_* no .env para rodar este teste)",
 )
 def test_assinatura_vincula_attachment_ao_checklist(client, db_session):
     usuario = criar_usuario(db_session, role="administrador", email="admin_chk6@teste.com")

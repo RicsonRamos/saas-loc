@@ -9,9 +9,15 @@ BUCKETS = ("veiculos", "documentos", "checklists", "anexos")
 
 _client: BaseClient | None = None
 
-# Timeout curto: se o MinIO estiver indisponível (ex.: fora de um ambiente com
-# docker-compose rodando), falhar rápido em vez de travar startup/requests.
-_CLIENT_CONFIG = Config(connect_timeout=2, read_timeout=5, retries={"max_attempts": 1})
+# Timeout curto: se o storage estiver indisponível, falhar rápido em vez de
+# travar startup/requests.
+_CLIENT_CONFIG = Config(
+    connect_timeout=2,
+    read_timeout=5,
+    retries={"max_attempts": 1},
+    signature_version="s3v4",
+    s3={"addressing_style": "path"},
+)
 
 
 def get_s3_client() -> BaseClient:
@@ -19,10 +25,10 @@ def get_s3_client() -> BaseClient:
     if _client is None:
         _client = boto3.client(
             "s3",
-            endpoint_url=settings.minio_endpoint,
-            aws_access_key_id=settings.minio_access_key,
-            aws_secret_access_key=settings.minio_secret_key,
-            region_name="us-east-1",
+            endpoint_url=settings.storage_endpoint,
+            aws_access_key_id=settings.storage_access_key,
+            aws_secret_access_key=settings.storage_secret_key,
+            region_name=settings.storage_region,
             config=_CLIENT_CONFIG,
         )
     return _client

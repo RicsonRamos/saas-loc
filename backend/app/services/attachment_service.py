@@ -95,7 +95,7 @@ def criar(
     bucket = "anexos"
     chave = f"{entidade_tipo}/{entidade_id}/{uuid.uuid4()}-{_sanitizar_nome(nome_original)}"
 
-    # Ordem deliberada: upload no MinIO primeiro, registro no banco depois.
+    # Ordem deliberada: upload no storage primeiro, registro no banco depois.
     # Se o upload falhar, nada é escrito no banco. Se o commit falhar após o
     # upload ter sido concluído, sobra um objeto órfão no storage — aceitável,
     # pois nunca deixa uma referência quebrada visível ao usuário.
@@ -169,7 +169,7 @@ def remover(
     usuario_id: uuid.UUID | None = None,
     ip: str | None = None,
 ) -> None:
-    """Soft delete no banco. Não remove o objeto físico do MinIO nesta chamada
+    """Soft delete no banco. Não remove o objeto físico do storage nesta chamada
     (evita apagar do storage e o commit do soft-delete falhar depois, deixando
     o registro "vivo" apontando para um objeto já removido). A limpeza física
     de objetos órfãos/soft-deletados é um job assíncrono fora de escopo desta

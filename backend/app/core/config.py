@@ -14,9 +14,10 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     frontend_base_url: str = "http://localhost:5173"
 
-    minio_endpoint: str = "http://localhost:9000"
-    minio_access_key: str = "locadora"
-    minio_secret_key: str = "locadora123"
+    storage_endpoint: str = "http://localhost:9000"
+    storage_access_key: str = "locadora"
+    storage_secret_key: str = "locadora123"
+    storage_region: str = "us-east-1"
 
     @field_validator("database_url")
     @classmethod

@@ -5,7 +5,7 @@ from app.core.storage import garantir_buckets
 from tests.conftest import auth_headers, criar_usuario
 
 
-def _minio_disponivel() -> bool:
+def _storage_disponivel() -> bool:
     try:
         garantir_buckets()
         return True
@@ -16,8 +16,8 @@ def _minio_disponivel() -> bool:
 
 
 pytestmark = pytest.mark.skipif(
-    not _minio_disponivel(),
-    reason="MinIO indisponível (suba `docker compose up minio` para rodar estes testes)",
+    not _storage_disponivel(),
+    reason="Storage indisponível (configure STORAGE_* no .env para rodar estes testes)",
 )
 
 

@@ -19,18 +19,16 @@ _storage_verificado = False
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # Guard de processo: cada `TestClient(app)` (um por teste) dispara este
     # lifespan de novo. Sem isso, uma suíte inteira reexecuta a tentativa de
-    # conexão ao MinIO (e paga o timeout de rede) uma vez por teste.
+    # conexão ao storage (e paga o timeout de rede) uma vez por teste.
     global _storage_verificado
     if not _storage_verificado:
         _storage_verificado = True
         try:
             garantir_buckets()
         except Exception:
-            # Storage (MinIO) é opcional para subir a API — falha aqui não deve
+            # Storage é opcional para subir a API — falha aqui não deve
             # derrubar o backend inteiro, só os endpoints de anexo ficam indisponíveis.
-            logger.warning(
-                "Não foi possível conectar ao storage (MinIO) no startup.", exc_info=True
-            )
+            logger.warning("Não foi possível conectar ao storage no startup.", exc_info=True)
     yield
 
 
