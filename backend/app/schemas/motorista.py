@@ -9,12 +9,16 @@ class MotoristaCreate(BaseModel):
     cnh: str = Field(min_length=5, max_length=20)
     validade_cnh: date
     telefone: str | None = None
+    cliente_id: UUID | None = None
+    parentesco: str | None = Field(default=None, max_length=60)
 
 
 class MotoristaUpdate(BaseModel):
     nome: str | None = Field(default=None, max_length=150)
     validade_cnh: date | None = None
     telefone: str | None = None
+    cliente_id: UUID | None = None
+    parentesco: str | None = Field(default=None, max_length=60)
 
 
 class MotoristaOut(BaseModel):
@@ -23,6 +27,8 @@ class MotoristaOut(BaseModel):
     cnh: str
     validade_cnh: date
     telefone: str | None
+    cliente_id: UUID | None
+    parentesco: str | None
     created_at: datetime
     updated_at: datetime
 

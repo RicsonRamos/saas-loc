@@ -18,12 +18,16 @@ def criar(db: Session, payload: MotoristaCreate) -> Motorista:
     return motorista
 
 
-def listar(db: Session, page: int, limit: int) -> tuple[list[Motorista], int]:
+def listar(
+    db: Session, page: int, limit: int, cliente_id: uuid.UUID | None = None
+) -> tuple[list[Motorista], int]:
     stmt = (
         select(Motorista)
         .where(Motorista.deleted_at.is_(None))
         .order_by(Motorista.created_at.desc())
     )
+    if cliente_id:
+        stmt = stmt.where(Motorista.cliente_id == cliente_id)
     return paginar(db, stmt, page, limit)
 
 

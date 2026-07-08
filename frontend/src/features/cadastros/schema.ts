@@ -68,3 +68,13 @@ export const motoristaSchema = z.object({
   telefone: z.string().optional().or(z.literal("")),
 });
 export type MotoristaFormValues = z.infer<typeof motoristaSchema>;
+
+export const condutorSchema = z.object({
+  nome: z.string().min(1, "Informe o nome."),
+  cnh: z.string().min(5, "Informe a CNH.").max(20),
+  validade_cnh: z.string().min(1, "Informe a validade da CNH."),
+  telefone: optionalTexto(),
+  parentesco: optionalTexto(),
+});
+export type CondutorFormInput = z.input<typeof condutorSchema>;
+export type CondutorFormValues = z.output<typeof condutorSchema>;

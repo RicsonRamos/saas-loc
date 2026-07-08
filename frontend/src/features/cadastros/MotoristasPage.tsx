@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
@@ -15,7 +16,7 @@ import { formatarData } from "@/core/format";
 import { usePaginatedQuery } from "@/core/hooks/usePaginatedQuery";
 
 import { motoristaSchema, type MotoristaFormValues } from "./schema";
-import type { Motorista } from "./types";
+import type { Cliente, Motorista } from "./types";
 
 const columnHelper = createColumnHelper<Motorista>();
 
@@ -33,6 +34,10 @@ export function MotoristasPage() {
     "/motoristas",
     { page, limit }
   );
+  const { data: clientes } = usePaginatedQuery<Cliente>(["clientes", "select"], "/clientes", {
+    page: 1,
+    limit: 100,
+  });
 
   const queryClient = useQueryClient();
   const {
@@ -122,6 +127,19 @@ export function MotoristasPage() {
     columnHelper.accessor("telefone", {
       header: "Telefone",
       cell: (info) => info.getValue() ?? "—",
+    }),
+    columnHelper.accessor("cliente_id", {
+      header: "Cliente vinculado",
+      cell: (info) => {
+        const clienteId = info.getValue();
+        if (!clienteId) return "—";
+        const cliente = clientes?.data.find((c) => c.id === clienteId);
+        return (
+          <Link className="underline" to={`/clientes/${clienteId}`}>
+            {cliente?.nome ?? "Ver cliente"}
+          </Link>
+        );
+      },
     }),
     ...(podeEditar
       ? [

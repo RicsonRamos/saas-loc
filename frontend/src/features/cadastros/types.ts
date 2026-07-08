@@ -54,4 +54,6 @@ export interface Motorista {
   cnh: string;
   validade_cnh: string;
   telefone: string | null;
+  cliente_id: string | null;
+  parentesco: string | null;
 }
