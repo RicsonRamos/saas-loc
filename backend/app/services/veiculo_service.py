@@ -1,13 +1,48 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.exceptions import NotFoundError
-from app.models.veiculo import Veiculo
-from app.schemas.veiculo import VeiculoCreate, VeiculoUpdate
+from app.models.cliente import Cliente
+from app.models.contrato import Contrato
+from app.models.financeiro import Despesa
+from app.models.manutencao import Manutencao
+from app.models.veiculo import (
+    STATUS_DISPONIVEL,
+    STATUS_LICENCIAMENTO_VENCIDO,
+    STATUS_SEGURO_VENCIDO,
+    Veiculo,
+)
+from app.schemas.veiculo import (
+    HistoricoContratoOut,
+    HistoricoDespesaOut,
+    HistoricoManutencaoOut,
+    HistoricoVeiculoOut,
+    VeiculoCreate,
+    VeiculoUpdate,
+)
 from app.services.common import paginar
+
+
+def calcular_status_efetivo(veiculo: Veiculo, hoje: date | None = None) -> str:
+    """Deriva a situação exibida do veículo a partir do status operacional + vencimentos.
+
+    Só sobrepõe quando o status bruto é "disponivel": um veículo alugado, em
+    manutenção, sinistrado etc. mantém seu status operacional mesmo com
+    documentação vencida — a sobreposição automática só faz sentido para o
+    caso em que o veículo seria oferecido para locação.
+    """
+    if veiculo.status != STATUS_DISPONIVEL:
+        return veiculo.status
+
+    referencia = hoje or datetime.now(UTC).date()
+    if veiculo.vencimento_licenciamento and veiculo.vencimento_licenciamento < referencia:
+        return STATUS_LICENCIAMENTO_VENCIDO
+    if veiculo.vencimento_seguro and veiculo.vencimento_seguro < referencia:
+        return STATUS_SEGURO_VENCIDO
+    return veiculo.status
 
 
 def criar(db: Session, payload: VeiculoCreate) -> Veiculo:
@@ -47,3 +82,54 @@ def remover(db: Session, veiculo_id: uuid.UUID) -> None:
     veiculo = obter(db, veiculo_id)
     veiculo.deleted_at = datetime.now(UTC)
     db.commit()
+
+
+def historico(db: Session, veiculo_id: uuid.UUID) -> HistoricoVeiculoOut:
+    obter(db, veiculo_id)  # garante 404 se o veículo não existir (ou estiver excluído)
+
+    contratos = db.execute(
+        select(Contrato, Cliente.nome)
+        .join(Cliente, Cliente.id == Contrato.cliente_id)
+        .where(Contrato.veiculo_id == veiculo_id)
+        .order_by(Contrato.data_inicio.desc())
+    ).all()
+
+    manutencoes = (
+        db.execute(
+            select(Manutencao)
+            .where(Manutencao.veiculo_id == veiculo_id, Manutencao.deleted_at.is_(None))
+            .order_by(Manutencao.data.desc())
+        )
+        .scalars()
+        .all()
+    )
+
+    despesas = (
+        db.execute(
+            select(Despesa)
+            .where(Despesa.veiculo_id == veiculo_id, Despesa.deleted_at.is_(None))
+            .order_by(Despesa.data.desc())
+        )
+        .scalars()
+        .all()
+    )
+
+    return HistoricoVeiculoOut(
+        contratos=[
+            HistoricoContratoOut(
+                id=contrato.id,
+                cliente_id=contrato.cliente_id,
+                cliente_nome=cliente_nome,
+                data_inicio=contrato.data_inicio,
+                data_fim_prevista=contrato.data_fim_prevista,
+                data_fim_real=contrato.data_fim_real,
+                status=contrato.status,
+                valor_diaria=contrato.valor_diaria,
+                km_inicio=contrato.km_inicio,
+                km_final=contrato.km_final,
+            )
+            for contrato, cliente_nome in contratos
+        ],
+        manutencoes=[HistoricoManutencaoOut.model_validate(m) for m in manutencoes],
+        despesas=[HistoricoDespesaOut.model_validate(d) for d in despesas],
+    )

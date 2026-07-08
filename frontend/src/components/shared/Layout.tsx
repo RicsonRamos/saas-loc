@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/core/auth/AuthContext";
 
 const links = [
+  { to: "/", label: "Dashboard" },
   { to: "/frota", label: "Frota" },
   { to: "/clientes", label: "Clientes" },
   { to: "/motoristas", label: "Motoristas" },
@@ -23,6 +24,7 @@ export function Layout() {
             <NavLink
               key={link.to}
               to={link.to}
+              end={link.to === "/"}
               className={({ isActive }) =>
                 `rounded-md px-3 py-2 text-sm ${
                   isActive ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"

@@ -51,6 +51,8 @@ class Contrato(TimestampedBase):
     data_fim_real: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=STATUS_RESERVADO)
     valor_diaria: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    km_inicio: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    km_final: Mapped[int | None] = mapped_column(Integer, nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
     __mapper_args__ = {"version_id_col": version}

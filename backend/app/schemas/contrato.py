@@ -12,6 +12,7 @@ class ContratoCreate(BaseModel):
     data_inicio: datetime
     data_fim_prevista: datetime
     valor_diaria: Decimal = Field(gt=0)
+    km_inicio: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def valida_periodo(self) -> "ContratoCreate":
@@ -35,6 +36,8 @@ class ContratoOut(BaseModel):
     data_fim_real: datetime | None
     status: str
     valor_diaria: Decimal
+    km_inicio: int | None
+    km_final: int | None
     version: int
     created_at: datetime
     updated_at: datetime

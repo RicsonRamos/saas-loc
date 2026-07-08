@@ -64,6 +64,117 @@ def test_atualizar_veiculo_com_campos_adicionais(client, db_session):
     assert corpo["vencimento_seguro"] == "2027-03-20"
 
 
+def test_status_efetivo_licenciamento_vencido_quando_disponivel(client, db_session):
+    usuario = criar_usuario(db_session, role="administrador", email="admin6@teste.com")
+    headers = auth_headers(usuario)
+
+    veiculo = client.post(
+        "/api/v1/veiculos",
+        json={"placa": "VNC1D23", "modelo": "Onix", "ano": 2023},
+        headers=headers,
+    ).json()
+
+    client.patch(
+        f"/api/v1/veiculos/{veiculo['id']}",
+        json={"vencimento_licenciamento": "2020-01-01"},
+        headers=headers,
+    )
+
+    obter_resp = client.get(f"/api/v1/veiculos/{veiculo['id']}", headers=headers)
+    assert obter_resp.json()["status"] == "licenciamento_vencido"
+
+    listar_resp = client.get("/api/v1/veiculos", headers=headers)
+    veiculo_na_lista = next(v for v in listar_resp.json()["data"] if v["id"] == veiculo["id"])
+    assert veiculo_na_lista["status"] == "licenciamento_vencido"
+
+
+def test_status_efetivo_nao_sobrepoe_veiculo_em_manutencao(client, db_session):
+    usuario = criar_usuario(db_session, role="administrador", email="admin7@teste.com")
+    headers = auth_headers(usuario)
+
+    veiculo = client.post(
+        "/api/v1/veiculos",
+        json={"placa": "MNT1D23", "modelo": "Onix", "ano": 2023},
+        headers=headers,
+    ).json()
+
+    client.patch(
+        f"/api/v1/veiculos/{veiculo['id']}",
+        json={"vencimento_seguro": "2020-01-01", "status": "em_manutencao"},
+        headers=headers,
+    )
+
+    obter_resp = client.get(f"/api/v1/veiculos/{veiculo['id']}", headers=headers)
+    assert obter_resp.json()["status"] == "em_manutencao"
+
+
+def test_atualizar_status_manual_para_sinistrado(client, db_session):
+    usuario = criar_usuario(db_session, role="administrador", email="admin8@teste.com")
+    headers = auth_headers(usuario)
+
+    veiculo = client.post(
+        "/api/v1/veiculos",
+        json={"placa": "SIN1D23", "modelo": "Onix", "ano": 2023},
+        headers=headers,
+    ).json()
+
+    resp = client.patch(
+        f"/api/v1/veiculos/{veiculo['id']}",
+        json={"status": "sinistrado"},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "sinistrado"
+
+
+def test_historico_veiculo_agrega_contratos_e_manutencoes(client, db_session):
+    usuario = criar_usuario(db_session, role="administrador", email="admin9@teste.com")
+    headers = auth_headers(usuario)
+
+    veiculo = client.post(
+        "/api/v1/veiculos",
+        json={"placa": "HST1D23", "modelo": "Onix", "ano": 2023},
+        headers=headers,
+    ).json()
+    cliente = client.post(
+        "/api/v1/clientes",
+        json={"nome": "Cliente Historico", "documento": "11122233344"},
+        headers=headers,
+    ).json()
+    client.post(
+        "/api/v1/contratos",
+        json={
+            "cliente_id": cliente["id"],
+            "veiculo_id": veiculo["id"],
+            "data_inicio": "2026-10-01T10:00:00Z",
+            "data_fim_prevista": "2026-10-05T10:00:00Z",
+            "valor_diaria": "199.90",
+            "km_inicio": 1000,
+        },
+        headers=headers,
+    )
+    client.post(
+        "/api/v1/manutencoes",
+        json={
+            "veiculo_id": veiculo["id"],
+            "tipo": "preventiva",
+            "data": "2026-09-01T09:00:00Z",
+            "km": 900,
+            "custo": "100.00",
+        },
+        headers=headers,
+    )
+
+    resp = client.get(f"/api/v1/veiculos/{veiculo['id']}/historico", headers=headers)
+    assert resp.status_code == 200
+    corpo = resp.json()
+    assert len(corpo["contratos"]) == 1
+    assert corpo["contratos"][0]["cliente_nome"] == "Cliente Historico"
+    assert corpo["contratos"][0]["km_inicio"] == 1000
+    assert len(corpo["manutencoes"]) == 1
+    assert corpo["despesas"] == []
+
+
 def test_remover_veiculo_soft_delete_some_da_listagem(client, db_session):
     usuario = criar_usuario(db_session, role="administrador", email="admin3@teste.com")
     headers = auth_headers(usuario)

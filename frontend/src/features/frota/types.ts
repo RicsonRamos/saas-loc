@@ -1,4 +1,13 @@
-export type StatusVeiculo = "disponivel" | "alugado" | "em_manutencao" | "baixado";
+export type StatusVeiculo =
+  | "disponivel"
+  | "alugado"
+  | "reservado"
+  | "em_manutencao"
+  | "sinistrado"
+  | "em_limpeza"
+  | "licenciamento_vencido"
+  | "seguro_vencido"
+  | "inativo";
 
 export interface Veiculo {
   id: string;

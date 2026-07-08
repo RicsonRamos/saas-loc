@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -73,3 +74,43 @@ class VeiculoOut(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class HistoricoContratoOut(BaseModel):
+    id: UUID
+    cliente_id: UUID
+    cliente_nome: str
+    data_inicio: datetime
+    data_fim_prevista: datetime
+    data_fim_real: datetime | None
+    status: str
+    valor_diaria: Decimal
+    km_inicio: int | None
+    km_final: int | None
+
+
+class HistoricoManutencaoOut(BaseModel):
+    id: UUID
+    tipo: str
+    data: datetime
+    km: int
+    custo: Decimal
+    oficina: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HistoricoDespesaOut(BaseModel):
+    id: UUID
+    categoria: str
+    valor: Decimal
+    data: datetime
+    descricao: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HistoricoVeiculoOut(BaseModel):
+    contratos: list[HistoricoContratoOut]
+    manutencoes: list[HistoricoManutencaoOut]
+    despesas: list[HistoricoDespesaOut]

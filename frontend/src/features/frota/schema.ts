@@ -21,6 +21,7 @@ export const veiculoSchema = z.object({
   cambio: optionalTexto(),
   vencimento_licenciamento: optionalTexto(),
   vencimento_seguro: optionalTexto(),
+  status: optionalTexto(),
 });
 
 export type VeiculoFormInput = z.input<typeof veiculoSchema>;

@@ -17,9 +17,9 @@ from app.models.contrato import (
 from app.models.motorista import Motorista
 from app.models.veiculo import (
     STATUS_ALUGADO,
-    STATUS_BAIXADO,
     STATUS_DISPONIVEL,
     STATUS_EM_MANUTENCAO,
+    STATUS_INATIVO,
     Veiculo,
 )
 from app.schemas.contrato import ContratoCreate, ContratoDevolucao
@@ -41,9 +41,9 @@ def criar_locacao(db: Session, payload: ContratoCreate) -> Contrato:
     o mesmo veículo em período sobreposto, apenas uma delas terá o INSERT aceito.
     """
     veiculo = _obter_veiculo(db, payload.veiculo_id)
-    if veiculo.status in (STATUS_EM_MANUTENCAO, STATUS_BAIXADO):
+    if veiculo.status in (STATUS_EM_MANUTENCAO, STATUS_INATIVO):
         raise VeiculoIndisponivelError(
-            "O veículo está em manutenção ou baixado e não pode ser alocado a uma locação."
+            "O veículo está em manutenção ou inativo e não pode ser alocado a uma locação."
         )
 
     cliente = db.get(Cliente, payload.cliente_id)
@@ -62,6 +62,7 @@ def criar_locacao(db: Session, payload: ContratoCreate) -> Contrato:
         data_inicio=payload.data_inicio,
         data_fim_prevista=payload.data_fim_prevista,
         valor_diaria=payload.valor_diaria,
+        km_inicio=payload.km_inicio if payload.km_inicio is not None else veiculo.km_atual,
         status=STATUS_ATIVO,
     )
     db.add(contrato)
@@ -113,6 +114,7 @@ def devolver(db: Session, contrato_id: uuid.UUID, payload: ContratoDevolucao) ->
     veiculo.status = STATUS_DISPONIVEL
     if payload.km_final is not None:
         veiculo.km_atual = payload.km_final
+        contrato.km_final = payload.km_final
 
     db.add(
         ContratoEvento(

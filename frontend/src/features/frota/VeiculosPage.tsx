@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
@@ -14,10 +15,16 @@ import { useAuth } from "@/core/auth/AuthContext";
 import { usePaginatedQuery } from "@/core/hooks/usePaginatedQuery";
 
 import { veiculoSchema, type VeiculoFormInput, type VeiculoFormValues } from "./schema";
-import { StatusVeiculoBadge } from "./StatusVeiculoBadge";
+import { STATUS_VEICULO_OPCOES, StatusVeiculoBadge } from "./StatusVeiculoBadge";
 import type { Veiculo } from "./types";
 
 const columnHelper = createColumnHelper<Veiculo>();
+
+// licenciamento_vencido/seguro_vencido são calculados automaticamente pelo backend
+// (ver veiculo_service.calcular_status_efetivo) e não devem ser escolhidos manualmente.
+const OPCOES_STATUS_MANUAL = STATUS_VEICULO_OPCOES.filter(
+  (opcao) => opcao.valor !== "licenciamento_vencido" && opcao.valor !== "seguro_vencido"
+);
 
 export function VeiculosPage() {
   const { hasPermission } = useAuth();
@@ -72,6 +79,7 @@ export function VeiculosPage() {
       cambio: veiculo.cambio ?? "",
       vencimento_licenciamento: veiculo.vencimento_licenciamento ?? "",
       vencimento_seguro: veiculo.vencimento_seguro ?? "",
+      status: veiculo.status,
     });
     setErroForm(null);
     setMostrarForm(true);
@@ -108,6 +116,7 @@ export function VeiculosPage() {
         cambio: valores.cambio,
         vencimento_licenciamento: valores.vencimento_licenciamento,
         vencimento_seguro: valores.vencimento_seguro,
+        status: valores.status,
       }),
     onSuccess: () => {
       invalidar();
@@ -145,36 +154,39 @@ export function VeiculosPage() {
     }),
     columnHelper.accessor("km_atual", { header: "KM atual" }),
     columnHelper.accessor("status", {
-      header: "Status",
+      header: "Situação",
       cell: (info) => <StatusVeiculoBadge status={info.getValue()} />,
     }),
-    ...(podeEditar
-      ? [
-          columnHelper.display({
-            id: "acoes",
-            header: "Ações",
-            cell: (info: { row: { original: Veiculo } }) => {
-              const veiculo = info.row.original;
-              return (
-                <div className="flex gap-2">
-                  <button
-                    className="text-xs text-blue-700 underline"
-                    onClick={() => abrirEdicao(veiculo)}
-                  >
-                    Editar
-                  </button>
-                  <button
-                    className="text-xs text-red-700 underline"
-                    onClick={() => excluir(veiculo)}
-                  >
-                    Excluir
-                  </button>
-                </div>
-              );
-            },
-          }),
-        ]
-      : []),
+    columnHelper.display({
+      id: "acoes",
+      header: "Ações",
+      cell: (info: { row: { original: Veiculo } }) => {
+        const veiculo = info.row.original;
+        return (
+          <div className="flex gap-2">
+            <Link className="text-xs text-slate-700 underline" to={`/frota/${veiculo.id}`}>
+              Histórico
+            </Link>
+            {podeEditar && (
+              <>
+                <button
+                  className="text-xs text-blue-700 underline"
+                  onClick={() => abrirEdicao(veiculo)}
+                >
+                  Editar
+                </button>
+                <button
+                  className="text-xs text-red-700 underline"
+                  onClick={() => excluir(veiculo)}
+                >
+                  Excluir
+                </button>
+              </>
+            )}
+          </div>
+        );
+      },
+    }),
   ];
 
   return (
@@ -301,6 +313,21 @@ export function VeiculosPage() {
               {...register("vencimento_seguro")}
             />
           </div>
+          {editandoId && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Situação</label>
+              <select
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                {...register("status")}
+              >
+                {OPCOES_STATUS_MANUAL.map((opcao) => (
+                  <option key={opcao.valor} value={opcao.valor}>
+                    {opcao.rotulo}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           {erroForm && <p className="col-span-full text-sm text-red-600">{erroForm}</p>}
           <div className="col-span-full">
             <Button type="submit" disabled={isSubmitting}>

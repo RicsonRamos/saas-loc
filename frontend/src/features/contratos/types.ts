@@ -10,6 +10,8 @@ export interface Contrato {
   data_fim_real: string | null;
   status: StatusContrato;
   valor_diaria: string;
+  km_inicio: number | null;
+  km_final: number | null;
   version: number;
   created_at: string;
   updated_at: string;
