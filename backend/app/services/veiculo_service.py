@@ -7,14 +7,20 @@ from sqlalchemy.orm import Session
 from app.exceptions import NotFoundError
 from app.models.cliente import Cliente
 from app.models.contrato import Contrato
+from app.models.dano import Dano
 from app.models.financeiro import Despesa
 from app.models.manutencao import Manutencao
+from app.models.multa import Multa
+from app.models.sinistro import Sinistro
 from app.models.veiculo import (
     STATUS_DISPONIVEL,
     STATUS_LICENCIAMENTO_VENCIDO,
     STATUS_SEGURO_VENCIDO,
     Veiculo,
 )
+from app.schemas.dano import DanoOut
+from app.schemas.multa import MultaOut
+from app.schemas.sinistro import SinistroOut
 from app.schemas.veiculo import (
     HistoricoContratoOut,
     HistoricoDespesaOut,
@@ -114,6 +120,36 @@ def historico(db: Session, veiculo_id: uuid.UUID) -> HistoricoVeiculoOut:
         .all()
     )
 
+    multas = (
+        db.execute(
+            select(Multa)
+            .where(Multa.veiculo_id == veiculo_id, Multa.deleted_at.is_(None))
+            .order_by(Multa.data.desc())
+        )
+        .scalars()
+        .all()
+    )
+
+    sinistros = (
+        db.execute(
+            select(Sinistro)
+            .where(Sinistro.veiculo_id == veiculo_id, Sinistro.deleted_at.is_(None))
+            .order_by(Sinistro.data.desc())
+        )
+        .scalars()
+        .all()
+    )
+
+    danos = (
+        db.execute(
+            select(Dano)
+            .where(Dano.veiculo_id == veiculo_id, Dano.deleted_at.is_(None))
+            .order_by(Dano.data.desc())
+        )
+        .scalars()
+        .all()
+    )
+
     return HistoricoVeiculoOut(
         contratos=[
             HistoricoContratoOut(
@@ -132,4 +168,7 @@ def historico(db: Session, veiculo_id: uuid.UUID) -> HistoricoVeiculoOut:
         ],
         manutencoes=[HistoricoManutencaoOut.model_validate(m) for m in manutencoes],
         despesas=[HistoricoDespesaOut.model_validate(d) for d in despesas],
+        multas=[MultaOut.model_validate(m) for m in multas],
+        sinistros=[SinistroOut.model_validate(s) for s in sinistros],
+        danos=[DanoOut.model_validate(d) for d in danos],
     )

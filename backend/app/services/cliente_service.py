@@ -8,12 +8,15 @@ from sqlalchemy.orm import Session
 from app.exceptions import NotFoundError
 from app.models.cliente import Cliente
 from app.models.contrato import STATUS_ATIVO, STATUS_ENCERRADO, Contrato
+from app.models.dano import Dano
 from app.models.financeiro import (
     STATUS_PAGAMENTO_ESTORNADO,
     STATUS_PAGAMENTO_PAGO,
     STATUS_PAGAMENTO_PENDENTE,
     Pagamento,
 )
+from app.models.multa import STATUS_MULTA_PENDENTE, Multa
+from app.models.sinistro import Sinistro
 from app.models.veiculo import Veiculo
 from app.schemas.cliente import (
     AlertaClienteOut,
@@ -24,6 +27,9 @@ from app.schemas.cliente import (
     HistoricoLocacaoClienteOut,
     ResumoFinanceiroClienteOut,
 )
+from app.schemas.dano import DanoOut
+from app.schemas.multa import MultaOut
+from app.schemas.sinistro import SinistroOut
 from app.services.common import paginar
 
 JANELA_CNH_DIAS = 30
@@ -76,13 +82,15 @@ def remover(db: Session, cliente_id: uuid.UUID) -> None:
 
 
 def _calcular_avaliacao(
-    locacoes_realizadas: int, teve_atraso_devolucao: bool, tem_pendencia_em_aberto: bool
+    locacoes_realizadas: int,
+    teve_atraso_devolucao: bool,
+    tem_pendencia_em_aberto: bool,
+    tem_multas: bool,
+    tem_sinistros: bool,
 ) -> int:
-    """Heurística inicial de 1 a 5 estrelas.
-
-    Considera apenas os sinais hoje disponíveis (pontualidade de devolução,
-    pendências financeiras, volume de locações). Multas, sinistros e danos
-    ainda não têm tabela própria — quando existirem, devem entrar nesta conta.
+    """Heurística de 1 a 5 estrelas com base em pontualidade, pendências,
+    volume de locações, multas e sinistros. Ainda não considera danos leves
+    (arranhões etc.) nem tempo como cliente — refinar quando fizer sentido.
     """
     if locacoes_realizadas == 0:
         return 3
@@ -91,6 +99,10 @@ def _calcular_avaliacao(
     if teve_atraso_devolucao:
         estrelas -= 1
     if tem_pendencia_em_aberto:
+        estrelas -= 1
+    if tem_multas:
+        estrelas -= 1
+    if tem_sinistros:
         estrelas -= 1
     return max(1, min(5, estrelas))
 
@@ -161,6 +173,43 @@ def historico(db: Session, cliente_id: uuid.UUID) -> HistoricoClienteOut:
             AlertaClienteOut(tipo="contrato_em_atraso", mensagem="Devolução está em atraso.")
         )
 
+    multas = (
+        db.execute(
+            select(Multa)
+            .where(Multa.cliente_id == cliente_id, Multa.deleted_at.is_(None))
+            .order_by(Multa.data.desc())
+        )
+        .scalars()
+        .all()
+    )
+    sinistros = (
+        db.execute(
+            select(Sinistro)
+            .where(Sinistro.cliente_id == cliente_id, Sinistro.deleted_at.is_(None))
+            .order_by(Sinistro.data.desc())
+        )
+        .scalars()
+        .all()
+    )
+    danos = (
+        db.execute(
+            select(Dano)
+            .where(Dano.cliente_id == cliente_id, Dano.deleted_at.is_(None))
+            .order_by(Dano.data.desc())
+        )
+        .scalars()
+        .all()
+    )
+
+    multas_pendentes = [m for m in multas if m.status == STATUS_MULTA_PENDENTE]
+    if multas_pendentes:
+        alertas.append(
+            AlertaClienteOut(
+                tipo="multas_pendentes",
+                mensagem=f"Cliente possui {len(multas_pendentes)} multa(s) pendente(s).",
+            )
+        )
+
     ficha = FichaClienteOut(
         status=cliente.status,
         cnh_categoria=cliente.cnh_categoria,
@@ -172,7 +221,11 @@ def historico(db: Session, cliente_id: uuid.UUID) -> HistoricoClienteOut:
         valor_total_gasto=total_pago,
         pendencias=total_pendente,
         avaliacao_estrelas=_calcular_avaliacao(
-            locacoes_realizadas, teve_atraso_devolucao, total_pendente > 0
+            locacoes_realizadas,
+            teve_atraso_devolucao,
+            total_pendente > 0,
+            len(multas) > 0,
+            len(sinistros) > 0,
         ),
     )
 
@@ -200,4 +253,7 @@ def historico(db: Session, cliente_id: uuid.UUID) -> HistoricoClienteOut:
             total_estornado=total_estornado,
         ),
         alertas=alertas,
+        multas=[MultaOut.model_validate(m) for m in multas],
+        sinistros=[SinistroOut.model_validate(s) for s in sinistros],
+        danos=[DanoOut.model_validate(d) for d in danos],
     )

@@ -5,6 +5,9 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.cliente import STATUS_CLIENTE_VALIDOS
+from app.schemas.dano import DanoOut
+from app.schemas.multa import MultaOut
+from app.schemas.sinistro import SinistroOut
 
 
 class ClienteCreate(BaseModel):
@@ -195,3 +198,6 @@ class HistoricoClienteOut(BaseModel):
     locacoes: list[HistoricoLocacaoClienteOut]
     financeiro: ResumoFinanceiroClienteOut
     alertas: list[AlertaClienteOut]
+    multas: list[MultaOut]
+    sinistros: list[SinistroOut]
+    danos: list[DanoOut]

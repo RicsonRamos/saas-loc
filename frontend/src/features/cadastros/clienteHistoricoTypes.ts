@@ -1,3 +1,5 @@
+import type { Dano, Multa, Sinistro } from "@/features/frota/incidentesTypes";
+
 export interface HistoricoLocacaoCliente {
   id: string;
   veiculo_id: string;
@@ -41,4 +43,7 @@ export interface HistoricoCliente {
   locacoes: HistoricoLocacaoCliente[];
   financeiro: ResumoFinanceiroCliente;
   alertas: AlertaCliente[];
+  multas: Multa[];
+  sinistros: Sinistro[];
+  danos: Dano[];
 }

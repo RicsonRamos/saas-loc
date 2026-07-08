@@ -5,6 +5,9 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.veiculo import STATUS_VEICULO_VALIDOS
+from app.schemas.dano import DanoOut
+from app.schemas.multa import MultaOut
+from app.schemas.sinistro import SinistroOut
 
 
 class VeiculoCreate(BaseModel):
@@ -114,3 +117,6 @@ class HistoricoVeiculoOut(BaseModel):
     contratos: list[HistoricoContratoOut]
     manutencoes: list[HistoricoManutencaoOut]
     despesas: list[HistoricoDespesaOut]
+    multas: list[MultaOut]
+    sinistros: list[SinistroOut]
+    danos: list[DanoOut]

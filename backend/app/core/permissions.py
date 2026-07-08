@@ -20,6 +20,12 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "contratos:emitir",
         "contratos:cancelar",
         "manutencoes:visualizar",
+        "multas:visualizar",
+        "multas:registrar",
+        "sinistros:visualizar",
+        "sinistros:registrar",
+        "danos:visualizar",
+        "danos:registrar",
     },
     FINANCEIRO: {
         "frota:visualizar",
@@ -27,11 +33,17 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "financeiro:visualizar",
         "financeiro:lancar",
         "financeiro:aprovar_estorno",
+        "multas:visualizar",
+        "sinistros:visualizar",
+        "danos:visualizar",
     },
     MECANICO: {
         "frota:visualizar",
         "manutencoes:visualizar",
         "manutencoes:registrar",
+        "sinistros:visualizar",
+        "danos:visualizar",
+        "danos:registrar",
     },
 }
 

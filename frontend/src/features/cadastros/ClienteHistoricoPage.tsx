@@ -8,11 +8,59 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { apiClient } from "@/core/api/client";
 import { formatarData, formatarDataHora, formatarMoeda } from "@/core/format";
 
+import type { Dano, Multa, Sinistro } from "@/features/frota/incidentesTypes";
+
 import { StatusClienteBadge } from "./StatusClienteBadge";
 import type { HistoricoCliente, HistoricoLocacaoCliente } from "./clienteHistoricoTypes";
 import type { Cliente, StatusCliente } from "./types";
 
 const locacaoColumns = createColumnHelper<HistoricoLocacaoCliente>();
+const multaColumns = createColumnHelper<Multa>();
+const sinistroColumns = createColumnHelper<Sinistro>();
+const danoColumns = createColumnHelper<Dano>();
+
+const ROTULOS_TIPO_SINISTRO: Record<string, string> = {
+  batida: "Batida",
+  roubo: "Roubo",
+  furto: "Furto",
+  enchente: "Enchente",
+  incendio: "Incêndio",
+};
+
+const ROTULOS_TIPO_DANO: Record<string, string> = {
+  arranhao: "Arranhão",
+  amassado: "Amassado",
+  quebra_vidro: "Quebra de vidro",
+  dano_interno: "Dano interno",
+  outro: "Outro",
+};
+
+const colunasMultas = [
+  multaColumns.accessor("data", { header: "Data", cell: (info) => formatarData(info.getValue()) }),
+  multaColumns.accessor("infracao", { header: "Infração" }),
+  multaColumns.accessor("valor", { header: "Valor", cell: (info) => formatarMoeda(info.getValue()) }),
+  multaColumns.accessor("status", { header: "Situação" }),
+];
+
+const colunasSinistros = [
+  sinistroColumns.accessor("data", {
+    header: "Data",
+    cell: (info) => formatarDataHora(info.getValue()),
+  }),
+  sinistroColumns.accessor("tipo", {
+    header: "Tipo",
+    cell: (info) => ROTULOS_TIPO_SINISTRO[info.getValue()],
+  }),
+  sinistroColumns.accessor("descricao", { header: "Descrição", cell: (info) => info.getValue() ?? "—" }),
+  sinistroColumns.accessor("status", { header: "Situação" }),
+];
+
+const colunasDanos = [
+  danoColumns.accessor("data", { header: "Data", cell: (info) => formatarData(info.getValue()) }),
+  danoColumns.accessor("tipo", { header: "Tipo", cell: (info) => ROTULOS_TIPO_DANO[info.getValue()] }),
+  danoColumns.accessor("descricao", { header: "Descrição", cell: (info) => info.getValue() ?? "—" }),
+  danoColumns.accessor("status", { header: "Situação" }),
+];
 
 const colunasLocacoes = [
   locacaoColumns.accessor("veiculo_placa", { header: "Veículo" }),
@@ -192,6 +240,39 @@ export function ClienteHistoricoPage() {
                 valor={formatarMoeda(historicoQuery.data.financeiro.total_estornado)}
               />
             </div>
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Multas
+            </h2>
+            {historicoQuery.data.multas.length === 0 ? (
+              <EmptyState mensagem="Nenhuma multa registrada para este cliente." />
+            ) : (
+              <DataTable columns={colunasMultas} data={historicoQuery.data.multas} />
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Sinistros
+            </h2>
+            {historicoQuery.data.sinistros.length === 0 ? (
+              <EmptyState mensagem="Nenhum sinistro registrado para este cliente." />
+            ) : (
+              <DataTable columns={colunasSinistros} data={historicoQuery.data.sinistros} />
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Danos
+            </h2>
+            {historicoQuery.data.danos.length === 0 ? (
+              <EmptyState mensagem="Nenhum dano registrado para este cliente." />
+            ) : (
+              <DataTable columns={colunasDanos} data={historicoQuery.data.danos} />
+            )}
           </section>
         </div>
       )}

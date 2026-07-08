@@ -12,6 +12,12 @@ export const ROLE_PERMISSIONS: Record<string, Set<string> | "*"> = {
     "contratos:emitir",
     "contratos:cancelar",
     "manutencoes:visualizar",
+    "multas:visualizar",
+    "multas:registrar",
+    "sinistros:visualizar",
+    "sinistros:registrar",
+    "danos:visualizar",
+    "danos:registrar",
   ]),
   financeiro: new Set([
     "frota:visualizar",
@@ -19,8 +25,18 @@ export const ROLE_PERMISSIONS: Record<string, Set<string> | "*"> = {
     "financeiro:visualizar",
     "financeiro:lancar",
     "financeiro:aprovar_estorno",
+    "multas:visualizar",
+    "sinistros:visualizar",
+    "danos:visualizar",
   ]),
-  mecanico: new Set(["frota:visualizar", "manutencoes:visualizar", "manutencoes:registrar"]),
+  mecanico: new Set([
+    "frota:visualizar",
+    "manutencoes:visualizar",
+    "manutencoes:registrar",
+    "sinistros:visualizar",
+    "danos:visualizar",
+    "danos:registrar",
+  ]),
 };
 
 export function temPermissao(role: string | undefined, permissao: string): boolean {

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.contrato import STATUS_ATIVO, Contrato
 from app.models.financeiro import STATUS_PAGAMENTO_PAGO, Despesa, Pagamento
 from app.models.manutencao import Manutencao
+from app.models.multa import STATUS_MULTA_PENDENTE, Multa
 from app.models.veiculo import Veiculo
 from app.schemas.dashboard import (
     AlertaOut,
@@ -171,6 +172,38 @@ def _alertas_devolucao_hoje(db: Session, hoje) -> list[AlertaOut]:
     return alertas
 
 
+def _alertas_multas_pendentes(db: Session, veiculos: list[Veiculo]) -> list[AlertaOut]:
+    veiculos_por_id = {v.id: v for v in veiculos}
+    multas_pendentes = (
+        db.execute(
+            select(Multa).where(
+                Multa.status == STATUS_MULTA_PENDENTE, Multa.deleted_at.is_(None)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    contagem_por_veiculo: dict = {}
+    for multa in multas_pendentes:
+        contagem_por_veiculo[multa.veiculo_id] = contagem_por_veiculo.get(multa.veiculo_id, 0) + 1
+
+    alertas: list[AlertaOut] = []
+    for veiculo_id, total in contagem_por_veiculo.items():
+        veiculo = veiculos_por_id.get(veiculo_id)
+        if veiculo is None:
+            continue
+        alertas.append(
+            AlertaOut(
+                tipo="multas_pendentes",
+                mensagem=f"Veículo {veiculo.placa} tem {total} multa(s) pendente(s).",
+                veiculo_id=veiculo.id,
+                veiculo_placa=veiculo.placa,
+            )
+        )
+    return alertas
+
+
 def resumo(db: Session, incluir_financeiro: bool) -> DashboardResumoOut:
     agora = datetime.now(UTC)
     hoje = agora.date()
@@ -180,6 +213,7 @@ def resumo(db: Session, incluir_financeiro: bool) -> DashboardResumoOut:
         *_alertas_documentos(veiculos, hoje),
         *_alertas_manutencao(db, veiculos, hoje),
         *_alertas_devolucao_hoje(db, hoje),
+        *_alertas_multas_pendentes(db, veiculos),
     ]
 
     return DashboardResumoOut(

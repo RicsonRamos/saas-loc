@@ -8,6 +8,9 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { apiClient } from "@/core/api/client";
 import { formatarData, formatarDataHora, formatarMoeda } from "@/core/format";
 
+import { DanosSecao } from "./DanosSecao";
+import { MultasSecao } from "./MultasSecao";
+import { SinistrosSecao } from "./SinistrosSecao";
 import { StatusVeiculoBadge } from "./StatusVeiculoBadge";
 import type {
   HistoricoContrato,
@@ -153,6 +156,10 @@ export function VeiculoHistoricoPage() {
               <DataTable columns={colunasDespesas} data={historicoQuery.data.despesas} />
             )}
           </section>
+
+          {id && <MultasSecao veiculoId={id} />}
+          {id && <SinistrosSecao veiculoId={id} />}
+          {id && <DanosSecao veiculoId={id} />}
         </div>
       )}
     </div>
