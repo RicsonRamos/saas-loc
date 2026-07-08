@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
     environment: str = "development"
     cors_origins: str = "http://localhost:5173"
+    frontend_base_url: str = "http://localhost:5173"
+
+    minio_endpoint: str = "http://localhost:9000"
+    minio_access_key: str = "locadora"
+    minio_secret_key: str = "locadora123"
 
     @field_validator("database_url")
     @classmethod

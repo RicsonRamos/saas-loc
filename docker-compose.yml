@@ -16,17 +16,41 @@ services:
       timeout: 5s
       retries: 10
 
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: locadora
+      MINIO_ROOT_PASSWORD: locadora123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build: ./backend
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql+psycopg://locadora:locadora@db:5432/locadora
       JWT_SECRET_KEY: change-me-in-production
       ENVIRONMENT: development
       CORS_ORIGINS: http://localhost:5173
+      FRONTEND_BASE_URL: http://localhost:5173
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: locadora
+      MINIO_SECRET_KEY: locadora123
     ports:
       - "8000:8000"
     volumes:
@@ -47,3 +71,4 @@ services:
 
 volumes:
   db_data:
+  minio_data:

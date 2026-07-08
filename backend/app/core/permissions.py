@@ -12,6 +12,13 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
     OPERADOR: {
         "frota:visualizar",
         "frota:editar",
+        "frota:regenerar_codigo_publico",
+        "auditoria:visualizar",
+        "anexos:visualizar",
+        "anexos:enviar",
+        "anexos:excluir",
+        "checklists:visualizar",
+        "checklists:registrar",
         "clientes:visualizar",
         "clientes:editar",
         "motoristas:visualizar",
@@ -41,6 +48,7 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "danos:visualizar",
         "abastecimentos:visualizar",
         "pneus:visualizar",
+        "anexos:visualizar",
     },
     MECANICO: {
         "frota:visualizar",
@@ -52,6 +60,9 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "abastecimentos:visualizar",
         "pneus:visualizar",
         "pneus:registrar",
+        "anexos:visualizar",
+        "anexos:enviar",
+        "checklists:visualizar",
     },
 }
 

@@ -1,3 +1,4 @@
+import secrets
 from datetime import date
 from decimal import Decimal
 
@@ -37,6 +38,13 @@ class Veiculo(TimestampedBase):
     __tablename__ = "veiculos"
 
     placa: Mapped[str] = mapped_column(String(10), unique=True, nullable=False, index=True)
+    codigo_publico: Mapped[str] = mapped_column(
+        String(40),
+        unique=True,
+        nullable=False,
+        index=True,
+        default=lambda: secrets.token_urlsafe(16),
+    )
     modelo: Mapped[str] = mapped_column(String(120), nullable=False)
     ano: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(30), nullable=False, default=STATUS_DISPONIVEL)

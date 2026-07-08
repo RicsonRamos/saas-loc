@@ -4,6 +4,13 @@ export const ROLE_PERMISSIONS: Record<string, Set<string> | "*"> = {
   operador: new Set([
     "frota:visualizar",
     "frota:editar",
+    "frota:regenerar_codigo_publico",
+    "auditoria:visualizar",
+    "anexos:visualizar",
+    "anexos:enviar",
+    "anexos:excluir",
+    "checklists:visualizar",
+    "checklists:registrar",
     "clientes:visualizar",
     "clientes:editar",
     "motoristas:visualizar",
@@ -33,6 +40,7 @@ export const ROLE_PERMISSIONS: Record<string, Set<string> | "*"> = {
     "danos:visualizar",
     "abastecimentos:visualizar",
     "pneus:visualizar",
+    "anexos:visualizar",
   ]),
   mecanico: new Set([
     "frota:visualizar",
@@ -44,6 +52,9 @@ export const ROLE_PERMISSIONS: Record<string, Set<string> | "*"> = {
     "abastecimentos:visualizar",
     "pneus:visualizar",
     "pneus:registrar",
+    "anexos:visualizar",
+    "anexos:enviar",
+    "checklists:visualizar",
   ]),
 };
 

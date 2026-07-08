@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.audit import registrar_auditoria
 from app.exceptions import ConflictError, NotFoundError, VeiculoIndisponivelError
 from app.models.cliente import Cliente
 from app.models.contrato import (
@@ -33,7 +34,12 @@ def _obter_veiculo(db: Session, veiculo_id: uuid.UUID) -> Veiculo:
     return veiculo
 
 
-def criar_locacao(db: Session, payload: ContratoCreate) -> Contrato:
+def criar_locacao(
+    db: Session,
+    payload: ContratoCreate,
+    usuario_id: uuid.UUID | None = None,
+    ip: str | None = None,
+) -> Contrato:
     """Cria o contrato/locação já como 'ativo' (reserva e contrato são o mesmo conceito).
 
     A prevenção de dupla alocação real vem da constraint de exclusão do banco
@@ -80,6 +86,15 @@ def criar_locacao(db: Session, payload: ContratoCreate) -> Contrato:
     db.add(
         ContratoEvento(contrato_id=contrato.id, status_anterior=None, status_novo=STATUS_ATIVO)
     )
+    registrar_auditoria(
+        db,
+        usuario_id=usuario_id,
+        acao="criar",
+        entidade="contrato",
+        entidade_id=contrato.id,
+        dados_novos={"status": STATUS_ATIVO, "veiculo_id": str(contrato.veiculo_id)},
+        ip=ip,
+    )
     db.commit()
     db.refresh(contrato)
     return contrato
@@ -101,7 +116,13 @@ def obter(db: Session, contrato_id: uuid.UUID) -> Contrato:
     return contrato
 
 
-def devolver(db: Session, contrato_id: uuid.UUID, payload: ContratoDevolucao) -> Contrato:
+def devolver(
+    db: Session,
+    contrato_id: uuid.UUID,
+    payload: ContratoDevolucao,
+    usuario_id: uuid.UUID | None = None,
+    ip: str | None = None,
+) -> Contrato:
     contrato = obter(db, contrato_id)
     if contrato.status != STATUS_ATIVO:
         raise ConflictError("Só é possível registrar devolução de um contrato ativo.")
@@ -123,12 +144,27 @@ def devolver(db: Session, contrato_id: uuid.UUID, payload: ContratoDevolucao) ->
             status_novo=STATUS_ENCERRADO,
         )
     )
+    registrar_auditoria(
+        db,
+        usuario_id=usuario_id,
+        acao="mudar_status",
+        entidade="contrato",
+        entidade_id=contrato.id,
+        dados_anteriores={"status": status_anterior},
+        dados_novos={"status": STATUS_ENCERRADO},
+        ip=ip,
+    )
     db.commit()
     db.refresh(contrato)
     return contrato
 
 
-def cancelar(db: Session, contrato_id: uuid.UUID) -> Contrato:
+def cancelar(
+    db: Session,
+    contrato_id: uuid.UUID,
+    usuario_id: uuid.UUID | None = None,
+    ip: str | None = None,
+) -> Contrato:
     contrato = obter(db, contrato_id)
     if contrato.status != STATUS_ATIVO:
         raise ConflictError("Só é possível cancelar um contrato ativo.")
@@ -145,6 +181,16 @@ def cancelar(db: Session, contrato_id: uuid.UUID) -> Contrato:
             status_anterior=status_anterior,
             status_novo=STATUS_CANCELADO,
         )
+    )
+    registrar_auditoria(
+        db,
+        usuario_id=usuario_id,
+        acao="mudar_status",
+        entidade="contrato",
+        entidade_id=contrato.id,
+        dados_anteriores={"status": status_anterior},
+        dados_novos={"status": STATUS_CANCELADO},
+        ip=ip,
     )
     db.commit()
     db.refresh(contrato)

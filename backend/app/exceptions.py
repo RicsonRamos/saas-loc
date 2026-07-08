@@ -49,6 +49,12 @@ class CredenciaisInvalidasError(DomainError):
     title = "Credenciais inválidas"
 
 
+class PayloadInvalidoError(DomainError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    code = "payload_invalido"
+    title = "Payload inválido"
+
+
 def _problem_response(status_code: int, code: str, title: str, detail: str) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Link, useParams } from "react-router-dom";
 
+import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
@@ -9,7 +10,9 @@ import { apiClient } from "@/core/api/client";
 import { formatarData, formatarDataHora, formatarMoeda } from "@/core/format";
 
 import { AbastecimentosSecao } from "./AbastecimentosSecao";
+import { AnexosSecao } from "./AnexosSecao";
 import { DanosSecao } from "./DanosSecao";
+import { HistoricoAuditoriaSecao } from "./HistoricoAuditoriaSecao";
 import { MultasSecao } from "./MultasSecao";
 import { PneusSecao } from "./PneusSecao";
 import { SinistrosSecao } from "./SinistrosSecao";
@@ -88,6 +91,12 @@ const colunasDespesas = [
   despesaColumns.accessor("descricao", { header: "Observação", cell: (info) => info.getValue() ?? "—" }),
 ];
 
+async function abrirPdf(caminho: string) {
+  const { data } = await apiClient.get(caminho, { responseType: "blob" });
+  const url = URL.createObjectURL(data as Blob);
+  window.open(url, "_blank");
+}
+
 export function VeiculoHistoricoPage() {
   const { id } = useParams<{ id: string }>();
 
@@ -129,16 +138,41 @@ export function VeiculoHistoricoPage() {
       )}
 
       {!carregando && !comErro && veiculoQuery.data && (
-        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-4">
-          <div>
-            <p className="text-lg font-semibold text-slate-900">
-              {veiculoQuery.data.placa} — {veiculoQuery.data.modelo}
-            </p>
-            <p className="text-sm text-slate-500">
-              {veiculoQuery.data.marca ?? "—"} · {veiculoQuery.data.ano} · {veiculoQuery.data.km_atual} km
-            </p>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div>
+              <p className="text-lg font-semibold text-slate-900">
+                {veiculoQuery.data.placa} — {veiculoQuery.data.modelo}
+              </p>
+              <p className="text-sm text-slate-500">
+                {veiculoQuery.data.marca ?? "—"} · {veiculoQuery.data.ano} · {veiculoQuery.data.km_atual} km
+              </p>
+            </div>
+            <StatusVeiculoBadge status={veiculoQuery.data.status} />
           </div>
-          <StatusVeiculoBadge status={veiculoQuery.data.status} />
+          <div className="flex flex-wrap gap-2">
+            <Button variante="secundaria" onClick={() => abrirPdf(`/veiculos/${id}/ficha.pdf`)}>
+              Imprimir ficha
+            </Button>
+            <Button
+              variante="secundaria"
+              onClick={() => abrirPdf(`/veiculos/${id}/historico.pdf`)}
+            >
+              Exportar histórico
+            </Button>
+            <Button
+              variante="secundaria"
+              onClick={() => abrirPdf(`/veiculos/${id}/abastecimentos.pdf`)}
+            >
+              Exportar abastecimentos
+            </Button>
+            <Button
+              variante="secundaria"
+              onClick={() => abrirPdf(`/veiculos/${id}/manutencoes.pdf`)}
+            >
+              Exportar manutenções
+            </Button>
+          </div>
         </div>
       )}
 
@@ -314,6 +348,8 @@ export function VeiculoHistoricoPage() {
           {id && <MultasSecao veiculoId={id} />}
           {id && <SinistrosSecao veiculoId={id} />}
           {id && <DanosSecao veiculoId={id} />}
+          {id && <AnexosSecao veiculoId={id} />}
+          {id && <HistoricoAuditoriaSecao veiculoId={id} />}
         </div>
       )}
     </div>

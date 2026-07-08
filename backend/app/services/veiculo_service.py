@@ -1,3 +1,4 @@
+import secrets
 import uuid
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -5,6 +6,7 @@ from decimal import Decimal
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.audit import registrar_auditoria, serializar_campos
 from app.exceptions import NotFoundError
 from app.models.abastecimento import Abastecimento
 from app.models.cliente import Cliente
@@ -55,9 +57,24 @@ def calcular_status_efetivo(veiculo: Veiculo, hoje: date | None = None) -> str:
     return veiculo.status
 
 
-def criar(db: Session, payload: VeiculoCreate) -> Veiculo:
+def criar(
+    db: Session,
+    payload: VeiculoCreate,
+    usuario_id: uuid.UUID | None = None,
+    ip: str | None = None,
+) -> Veiculo:
     veiculo = Veiculo(**payload.model_dump())
     db.add(veiculo)
+    db.flush()
+    registrar_auditoria(
+        db,
+        usuario_id=usuario_id,
+        acao="criar",
+        entidade="veiculo",
+        entidade_id=veiculo.id,
+        dados_novos=serializar_campos(payload.model_dump()),
+        ip=ip,
+    )
     db.commit()
     db.refresh(veiculo)
     return veiculo
@@ -104,18 +121,92 @@ def obter(db: Session, veiculo_id: uuid.UUID) -> Veiculo:
     return veiculo
 
 
-def atualizar(db: Session, veiculo_id: uuid.UUID, payload: VeiculoUpdate) -> Veiculo:
+def contrato_ativo_do_veiculo(db: Session, veiculo_id: uuid.UUID) -> Contrato | None:
+    return db.scalar(
+        select(Contrato).where(Contrato.veiculo_id == veiculo_id, Contrato.status == STATUS_ATIVO)
+    )
+
+
+def obter_por_codigo_publico(db: Session, codigo_publico: str) -> Veiculo:
+    veiculo = db.scalar(
+        select(Veiculo).where(
+            Veiculo.codigo_publico == codigo_publico, Veiculo.deleted_at.is_(None)
+        )
+    )
+    if veiculo is None:
+        raise NotFoundError("Veículo não encontrado.")
+    return veiculo
+
+
+def regenerar_codigo_publico(
+    db: Session,
+    veiculo_id: uuid.UUID,
+    usuario_id: uuid.UUID | None = None,
+    ip: str | None = None,
+) -> Veiculo:
+    """Invalida o código público atual (ex.: QR extraviado) sem afetar `id`/FKs."""
     veiculo = obter(db, veiculo_id)
-    for campo, valor in payload.model_dump(exclude_unset=True).items():
-        setattr(veiculo, campo, valor)
+    codigo_anterior = veiculo.codigo_publico
+    veiculo.codigo_publico = secrets.token_urlsafe(16)
+    registrar_auditoria(
+        db,
+        usuario_id=usuario_id,
+        acao="atualizar",
+        entidade="veiculo",
+        entidade_id=veiculo.id,
+        dados_anteriores={"codigo_publico": codigo_anterior},
+        dados_novos={"codigo_publico": veiculo.codigo_publico},
+        descricao="Código público do QR regenerado.",
+        ip=ip,
+    )
     db.commit()
     db.refresh(veiculo)
     return veiculo
 
 
-def remover(db: Session, veiculo_id: uuid.UUID) -> None:
+def atualizar(
+    db: Session,
+    veiculo_id: uuid.UUID,
+    payload: VeiculoUpdate,
+    usuario_id: uuid.UUID | None = None,
+    ip: str | None = None,
+) -> Veiculo:
+    veiculo = obter(db, veiculo_id)
+    campos_alterados = payload.model_dump(exclude_unset=True)
+    dados_anteriores = {campo: getattr(veiculo, campo) for campo in campos_alterados}
+    for campo, valor in campos_alterados.items():
+        setattr(veiculo, campo, valor)
+    registrar_auditoria(
+        db,
+        usuario_id=usuario_id,
+        acao="atualizar",
+        entidade="veiculo",
+        entidade_id=veiculo.id,
+        dados_anteriores=serializar_campos(dados_anteriores),
+        dados_novos=serializar_campos(campos_alterados),
+        ip=ip,
+    )
+    db.commit()
+    db.refresh(veiculo)
+    return veiculo
+
+
+def remover(
+    db: Session,
+    veiculo_id: uuid.UUID,
+    usuario_id: uuid.UUID | None = None,
+    ip: str | None = None,
+) -> None:
     veiculo = obter(db, veiculo_id)
     veiculo.deleted_at = datetime.now(UTC)
+    registrar_auditoria(
+        db,
+        usuario_id=usuario_id,
+        acao="excluir",
+        entidade="veiculo",
+        entidade_id=veiculo.id,
+        ip=ip,
+    )
     db.commit()
 
 

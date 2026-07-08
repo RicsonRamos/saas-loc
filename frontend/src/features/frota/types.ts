@@ -12,6 +12,7 @@ export type StatusVeiculo =
 export interface Veiculo {
   id: string;
   placa: string;
+  codigo_publico: string;
   modelo: string;
   ano: number;
   status: StatusVeiculo;

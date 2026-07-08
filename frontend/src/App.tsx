@@ -8,6 +8,7 @@ import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { FinanceiroPage } from "@/features/financeiro/FinanceiroPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { VeiculoHistoricoPage } from "@/features/frota/VeiculoHistoricoPage";
+import { VeiculoPublicoPage } from "@/features/frota/VeiculoPublicoPage";
 import { VeiculosPage } from "@/features/frota/VeiculosPage";
 import { ManutencoesPage } from "@/features/manutencoes/ManutencoesPage";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
@@ -17,6 +18,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/veiculo/public/:codigo" element={<VeiculoPublicoPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route index element={<DashboardPage />} />

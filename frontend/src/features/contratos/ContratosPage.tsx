@@ -16,6 +16,10 @@ import { usePaginatedQuery } from "@/core/hooks/usePaginatedQuery";
 import type { Cliente, Motorista } from "@/features/cadastros/types";
 import type { Veiculo } from "@/features/frota/types";
 
+import { ChecklistComparacao } from "@/features/checklists/ChecklistComparacao";
+import { ChecklistForm } from "@/features/checklists/ChecklistForm";
+import type { TipoChecklist } from "@/features/checklists/checklistTypes";
+
 import { contratoSchema, type ContratoFormInput, type ContratoFormValues } from "./schema";
 import { StatusContratoBadge } from "./StatusContratoBadge";
 import type { Contrato } from "./types";
@@ -30,6 +34,11 @@ export function ContratosPage() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [erroForm, setErroForm] = useState<string | null>(null);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
+  const [checklistAberto, setChecklistAberto] = useState<{
+    contratoId: string;
+    tipo: TipoChecklist;
+  } | null>(null);
+  const [comparacaoContratoId, setComparacaoContratoId] = useState<string | null>(null);
   const limit = 20;
 
   const { data, isLoading, isError, refetch } = usePaginatedQuery<Contrato>(
@@ -127,21 +136,58 @@ export function ContratosPage() {
       header: "Ações",
       cell: (info) => {
         const contrato = info.row.original;
-        if (contrato.status !== "ativo" || !hasPermission("contratos:emitir")) return null;
+        const podeRegistrarChecklist = contrato.status === "ativo" && hasPermission("checklists:registrar");
+        const podeVerComparacao = hasPermission("checklists:visualizar");
         return (
-          <div className="flex gap-2">
-            <button
-              className="text-xs text-blue-700 underline"
-              onClick={() => devolverContrato.mutate(contrato.id)}
-            >
-              Devolver
-            </button>
-            <button
-              className="text-xs text-red-700 underline"
-              onClick={() => cancelarContrato.mutate(contrato.id)}
-            >
-              Cancelar
-            </button>
+          <div className="flex flex-wrap gap-2">
+            {contrato.status === "ativo" && hasPermission("contratos:emitir") && (
+              <>
+                <button
+                  className="text-xs text-blue-700 underline"
+                  onClick={() => devolverContrato.mutate(contrato.id)}
+                >
+                  Devolver
+                </button>
+                <button
+                  className="text-xs text-red-700 underline"
+                  onClick={() => cancelarContrato.mutate(contrato.id)}
+                >
+                  Cancelar
+                </button>
+              </>
+            )}
+            {podeRegistrarChecklist && (
+              <>
+                <button
+                  className="text-xs text-slate-700 underline"
+                  onClick={() =>
+                    setChecklistAberto({ contratoId: contrato.id, tipo: "entrega" })
+                  }
+                >
+                  Checklist entrega
+                </button>
+                <button
+                  className="text-xs text-slate-700 underline"
+                  onClick={() =>
+                    setChecklistAberto({ contratoId: contrato.id, tipo: "devolucao" })
+                  }
+                >
+                  Checklist devolução
+                </button>
+              </>
+            )}
+            {podeVerComparacao && (
+              <button
+                className="text-xs text-slate-700 underline"
+                onClick={() =>
+                  setComparacaoContratoId(
+                    comparacaoContratoId === contrato.id ? null : contrato.id
+                  )
+                }
+              >
+                {comparacaoContratoId === contrato.id ? "Ocultar comparação" : "Comparar"}
+              </button>
+            )}
           </div>
         );
       },
@@ -256,6 +302,21 @@ export function ContratosPage() {
       )}
 
       {erroAcao && <p className="mb-3 text-sm text-red-600">{erroAcao}</p>}
+
+      {checklistAberto && (
+        <ChecklistForm
+          contratoId={checklistAberto.contratoId}
+          tipo={checklistAberto.tipo}
+          onCancelar={() => setChecklistAberto(null)}
+          onConcluido={() => setChecklistAberto(null)}
+        />
+      )}
+
+      {comparacaoContratoId && (
+        <div className="mb-6">
+          <ChecklistComparacao contratoId={comparacaoContratoId} />
+        </div>
+      )}
 
       {isLoading && <LoadingState />}
       {isError && (

@@ -4,15 +4,31 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.audit import registrar_auditoria, serializar_campos
 from app.exceptions import NotFoundError
 from app.models.abastecimento import Abastecimento
 from app.schemas.abastecimento import AbastecimentoCreate, AbastecimentoUpdate
 from app.services.common import paginar
 
 
-def criar(db: Session, payload: AbastecimentoCreate) -> Abastecimento:
+def criar(
+    db: Session,
+    payload: AbastecimentoCreate,
+    usuario_id: uuid.UUID | None = None,
+    ip: str | None = None,
+) -> Abastecimento:
     abastecimento = Abastecimento(**payload.model_dump())
     db.add(abastecimento)
+    db.flush()
+    registrar_auditoria(
+        db,
+        usuario_id=usuario_id,
+        acao="criar",
+        entidade="abastecimento",
+        entidade_id=abastecimento.id,
+        dados_novos=serializar_campos(payload.model_dump()),
+        ip=ip,
+    )
     db.commit()
     db.refresh(abastecimento)
     return abastecimento
@@ -39,17 +55,46 @@ def obter(db: Session, abastecimento_id: uuid.UUID) -> Abastecimento:
 
 
 def atualizar(
-    db: Session, abastecimento_id: uuid.UUID, payload: AbastecimentoUpdate
+    db: Session,
+    abastecimento_id: uuid.UUID,
+    payload: AbastecimentoUpdate,
+    usuario_id: uuid.UUID | None = None,
+    ip: str | None = None,
 ) -> Abastecimento:
     abastecimento = obter(db, abastecimento_id)
-    for campo, valor in payload.model_dump(exclude_unset=True).items():
+    campos_alterados = payload.model_dump(exclude_unset=True)
+    dados_anteriores = {campo: getattr(abastecimento, campo) for campo in campos_alterados}
+    for campo, valor in campos_alterados.items():
         setattr(abastecimento, campo, valor)
+    registrar_auditoria(
+        db,
+        usuario_id=usuario_id,
+        acao="atualizar",
+        entidade="abastecimento",
+        entidade_id=abastecimento.id,
+        dados_anteriores=serializar_campos(dados_anteriores),
+        dados_novos=serializar_campos(campos_alterados),
+        ip=ip,
+    )
     db.commit()
     db.refresh(abastecimento)
     return abastecimento
 
 
-def remover(db: Session, abastecimento_id: uuid.UUID) -> None:
+def remover(
+    db: Session,
+    abastecimento_id: uuid.UUID,
+    usuario_id: uuid.UUID | None = None,
+    ip: str | None = None,
+) -> None:
     abastecimento = obter(db, abastecimento_id)
     abastecimento.deleted_at = datetime.now(UTC)
+    registrar_auditoria(
+        db,
+        usuario_id=usuario_id,
+        acao="excluir",
+        entidade="abastecimento",
+        entidade_id=abastecimento.id,
+        ip=ip,
+    )
     db.commit()

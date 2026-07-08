@@ -115,6 +115,7 @@ class VeiculoUpdate(BaseModel):
 class VeiculoOut(BaseModel):
     id: UUID
     placa: str
+    codigo_publico: str
     modelo: str
     ano: int
     status: str

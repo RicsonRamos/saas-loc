@@ -2,7 +2,10 @@ from fastapi import APIRouter
 
 from app.api import (
     abastecimentos,
+    attachments,
+    audit_logs,
     auth,
+    checklists,
     clientes,
     contratos,
     danos,
@@ -14,12 +17,19 @@ from app.api import (
     multas,
     pneus,
     sinistros,
+    veiculo_publico,
 )
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(frota.router)
+api_router.include_router(audit_logs.router)
+api_router.include_router(attachments.router)
+api_router.include_router(checklists.router)
+
+# Sem Depends(require_permission) de propósito: única rota pública da API.
+api_router.include_router(veiculo_publico.router)
 api_router.include_router(clientes.router)
 api_router.include_router(motoristas.router)
 api_router.include_router(contratos.router)
