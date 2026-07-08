@@ -43,7 +43,7 @@ services:
       minio:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg://locadora:locadora@db:5432/locadora
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://locadora:locadora@db:5432/locadora}
       JWT_SECRET_KEY: change-me-in-production
       ENVIRONMENT: development
       CORS_ORIGINS: http://localhost:5173
