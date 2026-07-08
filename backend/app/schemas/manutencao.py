@@ -27,6 +27,24 @@ class ManutencaoCreate(BaseModel):
         return v
 
 
+class ManutencaoUpdate(BaseModel):
+    tipo: str | None = None
+    data: datetime | None = None
+    km: int | None = Field(default=None, ge=0)
+    custo: Decimal | None = Field(default=None, ge=0)
+    oficina: str | None = None
+    descricao: str | None = None
+    proxima_manutencao_km: int | None = Field(default=None, ge=0)
+    proxima_manutencao_data: date | None = None
+
+    @field_validator("tipo")
+    @classmethod
+    def tipo_valido(cls, v: str | None) -> str | None:
+        if v is not None and v not in TIPOS_MANUTENCAO_VALIDOS:
+            raise ValueError(f"Tipo inválido. Use um de: {sorted(TIPOS_MANUTENCAO_VALIDOS)}")
+        return v
+
+
 class ManutencaoOut(BaseModel):
     id: UUID
     veiculo_id: UUID

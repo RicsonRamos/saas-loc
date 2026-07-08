@@ -233,6 +233,8 @@ function DespesasTab() {
   const [page, setPage] = useState(1);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [erroForm, setErroForm] = useState<string | null>(null);
+  const [erroAcao, setErroAcao] = useState<string | null>(null);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
   const limit = 20;
 
   const { data, isLoading, isError, refetch } = usePaginatedQuery<Despesa>(
@@ -255,6 +257,37 @@ function DespesasTab() {
     resolver: zodResolver(despesaSchema),
   });
 
+  function invalidar() {
+    void queryClient.invalidateQueries({ queryKey: ["financeiro", "despesas"] });
+  }
+
+  function abrirNovo() {
+    setEditandoId(null);
+    reset({ categoria: "", veiculo_id: "", valor: 0, data: "", descricao: "" });
+    setErroForm(null);
+    setMostrarForm(true);
+  }
+
+  function abrirEdicao(despesa: Despesa) {
+    setEditandoId(despesa.id);
+    reset({
+      categoria: despesa.categoria,
+      veiculo_id: despesa.veiculo_id ?? "",
+      valor: Number(despesa.valor),
+      data: despesa.data.slice(0, 10),
+      descricao: despesa.descricao ?? "",
+    });
+    setErroForm(null);
+    setMostrarForm(true);
+  }
+
+  function fecharForm() {
+    setMostrarForm(false);
+    setEditandoId(null);
+    reset({ categoria: "", veiculo_id: "", valor: 0, data: "", descricao: "" });
+    setErroForm(null);
+  }
+
   const registrarDespesa = useMutation({
     mutationFn: (valores: DespesaFormValues) =>
       apiClient.post("/financeiro/despesas", {
@@ -263,30 +296,83 @@ function DespesasTab() {
         data: `${valores.data}T00:00:00Z`,
       }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["financeiro", "despesas"] });
-      reset();
-      setMostrarForm(false);
-      setErroForm(null);
+      invalidar();
+      fecharForm();
     },
     onError: (error) => setErroForm(extrairMensagemErro(error)),
   });
 
+  const atualizarDespesa = useMutation({
+    mutationFn: (valores: DespesaFormValues) =>
+      apiClient.patch(`/financeiro/despesas/${editandoId}`, {
+        ...valores,
+        veiculo_id: valores.veiculo_id || null,
+        data: `${valores.data}T00:00:00Z`,
+      }),
+    onSuccess: () => {
+      invalidar();
+      fecharForm();
+    },
+    onError: (error) => setErroForm(extrairMensagemErro(error)),
+  });
+
+  const removerDespesa = useMutation({
+    mutationFn: (despesaId: string) => apiClient.delete(`/financeiro/despesas/${despesaId}`),
+    onSuccess: () => {
+      invalidar();
+      setErroAcao(null);
+    },
+    onError: (error) => setErroAcao(extrairMensagemErro(error)),
+  });
+
+  function excluir(despesa: Despesa) {
+    if (window.confirm(`Excluir a despesa "${despesa.categoria}"?`)) {
+      removerDespesa.mutate(despesa.id);
+    }
+  }
+
   const columnHelper = createColumnHelper<Despesa>();
   const placaVeiculo = (id: string | null) => veiculos?.data.find((v) => v.id === id)?.placa ?? "—";
+  const podeLancar = hasPermission("financeiro:lancar");
   const columns = [
     columnHelper.accessor("data", { header: "Data", cell: (info) => formatarData(info.getValue()) }),
     columnHelper.accessor("categoria", { header: "Categoria" }),
     columnHelper.accessor("veiculo_id", { header: "Veículo", cell: (info) => placaVeiculo(info.getValue()) }),
     columnHelper.accessor("valor", { header: "Valor", cell: (info) => formatarMoeda(info.getValue()) }),
+    ...(podeLancar
+      ? [
+          columnHelper.display({
+            id: "acoes",
+            header: "Ações",
+            cell: (info: { row: { original: Despesa } }) => {
+              const despesa = info.row.original;
+              return (
+                <div className="flex gap-2">
+                  <button
+                    className="text-xs text-blue-700 underline"
+                    onClick={() => abrirEdicao(despesa)}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    className="text-xs text-red-700 underline"
+                    onClick={() => excluir(despesa)}
+                  >
+                    Excluir
+                  </button>
+                </div>
+              );
+            },
+          }),
+        ]
+      : []),
   ];
-
-  const podeLancar = hasPermission("financeiro:lancar");
 
   return (
     <div>
       {podeLancar && (
         <div className="mb-4">
-          <Button onClick={() => setMostrarForm((v) => !v)}>
+          <Button onClick={() => (mostrarForm ? fecharForm() : abrirNovo())}>
             {mostrarForm ? "Cancelar" : "Registrar despesa"}
           </Button>
         </div>
@@ -294,7 +380,9 @@ function DespesasTab() {
 
       {mostrarForm && (
         <form
-          onSubmit={handleSubmit((valores) => registrarDespesa.mutate(valores))}
+          onSubmit={handleSubmit((valores) =>
+            editandoId ? atualizarDespesa.mutate(valores) : registrarDespesa.mutate(valores)
+          )}
           className="mb-6 grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-4"
         >
           <div>
@@ -341,11 +429,13 @@ function DespesasTab() {
           {erroForm && <p className="col-span-full text-sm text-red-600">{erroForm}</p>}
           <div className="col-span-full">
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Salvando..." : "Registrar despesa"}
+              {isSubmitting ? "Salvando..." : editandoId ? "Atualizar despesa" : "Registrar despesa"}
             </Button>
           </div>
         </form>
       )}
+
+      {erroAcao && <p className="mb-3 text-sm text-red-600">{erroAcao}</p>}
 
       {isLoading && <LoadingState />}
       {isError && (

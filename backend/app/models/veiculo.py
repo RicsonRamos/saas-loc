@@ -1,4 +1,6 @@
-from sqlalchemy import Integer, String
+from datetime import date
+
+from sqlalchemy import Date, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import TimestampedBase
@@ -25,3 +27,12 @@ class Veiculo(TimestampedBase):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=STATUS_DISPONIVEL)
     km_atual: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     filial_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    marca: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    cor: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    categoria: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    chassi: Mapped[str | None] = mapped_column(String(30), unique=True, nullable=True)
+    renavam: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
+    combustivel: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    cambio: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    vencimento_licenciamento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    vencimento_seguro: Mapped[date | None] = mapped_column(Date, nullable=True)

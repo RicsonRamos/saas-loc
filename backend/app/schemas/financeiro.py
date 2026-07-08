@@ -44,6 +44,14 @@ class DespesaOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class DespesaUpdate(BaseModel):
+    veiculo_id: UUID | None = None
+    categoria: str | None = Field(default=None, min_length=1, max_length=60)
+    valor: Decimal | None = Field(default=None, gt=0)
+    data: datetime | None = None
+    descricao: str | None = None
+
+
 class RentabilidadeVeiculoOut(BaseModel):
     veiculo_id: UUID
     placa: str

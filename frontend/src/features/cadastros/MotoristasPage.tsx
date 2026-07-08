@@ -19,21 +19,13 @@ import type { Motorista } from "./types";
 
 const columnHelper = createColumnHelper<Motorista>();
 
-const columns = [
-  columnHelper.accessor("nome", { header: "Nome" }),
-  columnHelper.accessor("cnh", { header: "CNH" }),
-  columnHelper.accessor("validade_cnh", {
-    header: "Validade da CNH",
-    cell: (info) => formatarData(info.getValue()),
-  }),
-  columnHelper.accessor("telefone", { header: "Telefone", cell: (info) => info.getValue() ?? "—" }),
-];
-
 export function MotoristasPage() {
   const { hasPermission } = useAuth();
   const [page, setPage] = useState(1);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [erroForm, setErroForm] = useState<string | null>(null);
+  const [erroAcao, setErroAcao] = useState<string | null>(null);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
   const limit = 20;
 
   const { data, isLoading, isError, refetch } = usePaginatedQuery<Motorista>(
@@ -50,18 +42,115 @@ export function MotoristasPage() {
     formState: { errors, isSubmitting },
   } = useForm<MotoristaFormValues>({ resolver: zodResolver(motoristaSchema) });
 
+  function invalidar() {
+    void queryClient.invalidateQueries({ queryKey: ["motoristas"] });
+  }
+
+  function abrirNovo() {
+    setEditandoId(null);
+    reset({ nome: "", cnh: "", validade_cnh: "", telefone: "" });
+    setErroForm(null);
+    setMostrarForm(true);
+  }
+
+  function abrirEdicao(motorista: Motorista) {
+    setEditandoId(motorista.id);
+    reset({
+      nome: motorista.nome,
+      cnh: motorista.cnh,
+      validade_cnh: motorista.validade_cnh,
+      telefone: motorista.telefone ?? "",
+    });
+    setErroForm(null);
+    setMostrarForm(true);
+  }
+
+  function fecharForm() {
+    setMostrarForm(false);
+    setEditandoId(null);
+    reset({ nome: "", cnh: "", validade_cnh: "", telefone: "" });
+    setErroForm(null);
+  }
+
   const criarMotorista = useMutation({
     mutationFn: (valores: MotoristaFormValues) => apiClient.post("/motoristas", valores),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["motoristas"] });
-      reset();
-      setMostrarForm(false);
-      setErroForm(null);
+      invalidar();
+      fecharForm();
     },
     onError: (error) => setErroForm(extrairMensagemErro(error)),
   });
 
+  const atualizarMotorista = useMutation({
+    mutationFn: (valores: MotoristaFormValues) =>
+      apiClient.patch(`/motoristas/${editandoId}`, {
+        nome: valores.nome,
+        validade_cnh: valores.validade_cnh,
+        telefone: valores.telefone,
+      }),
+    onSuccess: () => {
+      invalidar();
+      fecharForm();
+    },
+    onError: (error) => setErroForm(extrairMensagemErro(error)),
+  });
+
+  const removerMotorista = useMutation({
+    mutationFn: (motoristaId: string) => apiClient.delete(`/motoristas/${motoristaId}`),
+    onSuccess: () => {
+      invalidar();
+      setErroAcao(null);
+    },
+    onError: (error) => setErroAcao(extrairMensagemErro(error)),
+  });
+
+  function excluir(motorista: Motorista) {
+    if (window.confirm(`Excluir o motorista ${motorista.nome}?`)) {
+      removerMotorista.mutate(motorista.id);
+    }
+  }
+
   const podeEditar = hasPermission("motoristas:editar");
+
+  const columns = [
+    columnHelper.accessor("nome", { header: "Nome" }),
+    columnHelper.accessor("cnh", { header: "CNH" }),
+    columnHelper.accessor("validade_cnh", {
+      header: "Validade da CNH",
+      cell: (info) => formatarData(info.getValue()),
+    }),
+    columnHelper.accessor("telefone", {
+      header: "Telefone",
+      cell: (info) => info.getValue() ?? "—",
+    }),
+    ...(podeEditar
+      ? [
+          columnHelper.display({
+            id: "acoes",
+            header: "Ações",
+            cell: (info: { row: { original: Motorista } }) => {
+              const motorista = info.row.original;
+              return (
+                <div className="flex gap-2">
+                  <button
+                    className="text-xs text-blue-700 underline"
+                    onClick={() => abrirEdicao(motorista)}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    className="text-xs text-red-700 underline"
+                    onClick={() => excluir(motorista)}
+                  >
+                    Excluir
+                  </button>
+                </div>
+              );
+            },
+          }),
+        ]
+      : []),
+  ];
 
   return (
     <div>
@@ -69,7 +158,7 @@ export function MotoristasPage() {
         title="Motoristas"
         actions={
           podeEditar && (
-            <Button onClick={() => setMostrarForm((v) => !v)}>
+            <Button onClick={() => (mostrarForm ? fecharForm() : abrirNovo())}>
               {mostrarForm ? "Cancelar" : "Novo motorista"}
             </Button>
           )
@@ -78,7 +167,9 @@ export function MotoristasPage() {
 
       {mostrarForm && (
         <form
-          onSubmit={handleSubmit((valores) => criarMotorista.mutate(valores))}
+          onSubmit={handleSubmit((valores) =>
+            editandoId ? atualizarMotorista.mutate(valores) : criarMotorista.mutate(valores)
+          )}
           className="mb-6 grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-4"
         >
           <div>
@@ -88,7 +179,11 @@ export function MotoristasPage() {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">CNH</label>
-            <input className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" {...register("cnh")} />
+            <input
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100"
+              disabled={!!editandoId}
+              {...register("cnh")}
+            />
             {errors.cnh && <p className="text-xs text-red-600">{errors.cnh.message}</p>}
           </div>
           <div>
@@ -112,11 +207,13 @@ export function MotoristasPage() {
           {erroForm && <p className="col-span-full text-sm text-red-600">{erroForm}</p>}
           <div className="col-span-full">
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Salvando..." : "Salvar motorista"}
+              {isSubmitting ? "Salvando..." : editandoId ? "Atualizar motorista" : "Salvar motorista"}
             </Button>
           </div>
         </form>
       )}
+
+      {erroAcao && <p className="mb-3 text-sm text-red-600">{erroAcao}</p>}
 
       {isLoading && <LoadingState />}
       {isError && (

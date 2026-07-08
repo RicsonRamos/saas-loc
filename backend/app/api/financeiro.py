@@ -9,6 +9,7 @@ from app.schemas.common import Page, PageMeta
 from app.schemas.financeiro import (
     DespesaCreate,
     DespesaOut,
+    DespesaUpdate,
     PagamentoCreate,
     PagamentoOut,
     RentabilidadeVeiculoOut,
@@ -69,6 +70,25 @@ def registrar_despesa(
     _: object = Depends(require_permission("financeiro:lancar")),
 ) -> DespesaOut:
     return financeiro_service.registrar_despesa(db, payload)
+
+
+@router.patch("/despesas/{despesa_id}", response_model=DespesaOut)
+def atualizar_despesa(
+    despesa_id: UUID,
+    payload: DespesaUpdate,
+    db: Session = Depends(get_db),
+    _: object = Depends(require_permission("financeiro:lancar")),
+) -> DespesaOut:
+    return financeiro_service.atualizar_despesa(db, despesa_id, payload)
+
+
+@router.delete("/despesas/{despesa_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remover_despesa(
+    despesa_id: UUID,
+    db: Session = Depends(get_db),
+    _: object = Depends(require_permission("financeiro:lancar")),
+) -> None:
+    financeiro_service.remover_despesa(db, despesa_id)
 
 
 @router.get("/rentabilidade", response_model=list[RentabilidadeVeiculoOut])

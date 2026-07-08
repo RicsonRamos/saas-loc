@@ -66,3 +66,29 @@ def test_valor_de_pagamento_negativo_ou_zero_e_rejeitado(client, db_session):
         headers=headers,
     )
     assert resp.status_code == 422
+
+
+def test_atualizar_e_remover_despesa(client, db_session):
+    usuario = criar_usuario(db_session, role="administrador", email="admin5@teste.com")
+    headers = auth_headers(usuario)
+
+    despesa = client.post(
+        "/api/v1/financeiro/despesas",
+        json={"categoria": "Combustível", "valor": "150.00", "data": "2026-10-05T12:00:00Z"},
+        headers=headers,
+    ).json()
+
+    atualizar_resp = client.patch(
+        f"/api/v1/financeiro/despesas/{despesa['id']}",
+        json={"valor": "180.00", "categoria": "Combustível e pedágio"},
+        headers=headers,
+    )
+    assert atualizar_resp.status_code == 200
+    assert atualizar_resp.json()["categoria"] == "Combustível e pedágio"
+
+    remover_resp = client.delete(f"/api/v1/financeiro/despesas/{despesa['id']}", headers=headers)
+    assert remover_resp.status_code == 204
+
+    listar_resp = client.get("/api/v1/financeiro/despesas", headers=headers)
+    assert listar_resp.status_code == 200
+    assert all(d["id"] != despesa["id"] for d in listar_resp.json()["data"])

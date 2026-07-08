@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import require_permission
 from app.schemas.common import Page, PageMeta
-from app.schemas.manutencao import ManutencaoCreate, ManutencaoOut
+from app.schemas.manutencao import ManutencaoCreate, ManutencaoOut, ManutencaoUpdate
 from app.services import manutencao_service
 
 router = APIRouter(prefix="/manutencoes", tags=["manutencoes"])
@@ -41,3 +41,22 @@ def obter_manutencao(
     _: object = Depends(require_permission("manutencoes:visualizar")),
 ) -> ManutencaoOut:
     return manutencao_service.obter(db, manutencao_id)
+
+
+@router.patch("/{manutencao_id}", response_model=ManutencaoOut)
+def atualizar_manutencao(
+    manutencao_id: UUID,
+    payload: ManutencaoUpdate,
+    db: Session = Depends(get_db),
+    _: object = Depends(require_permission("manutencoes:registrar")),
+) -> ManutencaoOut:
+    return manutencao_service.atualizar(db, manutencao_id, payload)
+
+
+@router.delete("/{manutencao_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remover_manutencao(
+    manutencao_id: UUID,
+    db: Session = Depends(get_db),
+    _: object = Depends(require_permission("manutencoes:registrar")),
+) -> None:
+    manutencao_service.remover(db, manutencao_id)

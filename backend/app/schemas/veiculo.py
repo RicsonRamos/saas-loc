@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -12,6 +12,15 @@ class VeiculoCreate(BaseModel):
     ano: int = Field(ge=1950, le=2100)
     km_atual: int = Field(default=0, ge=0)
     filial_id: str | None = None
+    marca: str | None = Field(default=None, max_length=60)
+    cor: str | None = Field(default=None, max_length=40)
+    categoria: str | None = Field(default=None, max_length=60)
+    chassi: str | None = Field(default=None, max_length=30)
+    renavam: str | None = Field(default=None, max_length=20)
+    combustivel: str | None = Field(default=None, max_length=30)
+    cambio: str | None = Field(default=None, max_length=30)
+    vencimento_licenciamento: date | None = None
+    vencimento_seguro: date | None = None
 
     @field_validator("placa")
     @classmethod
@@ -25,6 +34,15 @@ class VeiculoUpdate(BaseModel):
     km_atual: int | None = Field(default=None, ge=0)
     status: str | None = None
     filial_id: str | None = None
+    marca: str | None = Field(default=None, max_length=60)
+    cor: str | None = Field(default=None, max_length=40)
+    categoria: str | None = Field(default=None, max_length=60)
+    chassi: str | None = Field(default=None, max_length=30)
+    renavam: str | None = Field(default=None, max_length=20)
+    combustivel: str | None = Field(default=None, max_length=30)
+    cambio: str | None = Field(default=None, max_length=30)
+    vencimento_licenciamento: date | None = None
+    vencimento_seguro: date | None = None
 
     @field_validator("status")
     @classmethod
@@ -42,6 +60,15 @@ class VeiculoOut(BaseModel):
     status: str
     km_atual: int
     filial_id: str | None
+    marca: str | None
+    cor: str | None
+    categoria: str | None
+    chassi: str | None
+    renavam: str | None
+    combustivel: str | None
+    cambio: str | None
+    vencimento_licenciamento: date | None
+    vencimento_seguro: date | None
     created_at: datetime
     updated_at: datetime
 

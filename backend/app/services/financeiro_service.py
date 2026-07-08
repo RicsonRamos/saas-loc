@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy import func, select
@@ -13,7 +14,12 @@ from app.models.financeiro import (
     Pagamento,
 )
 from app.models.veiculo import Veiculo
-from app.schemas.financeiro import DespesaCreate, PagamentoCreate, RentabilidadeVeiculoOut
+from app.schemas.financeiro import (
+    DespesaCreate,
+    DespesaUpdate,
+    PagamentoCreate,
+    RentabilidadeVeiculoOut,
+)
 from app.services.common import paginar
 
 
@@ -68,10 +74,34 @@ def registrar_despesa(db: Session, payload: DespesaCreate) -> Despesa:
 def listar_despesas(
     db: Session, page: int, limit: int, veiculo_id: uuid.UUID | None = None
 ) -> tuple[list[Despesa], int]:
-    stmt = select(Despesa).order_by(Despesa.data.desc())
+    stmt = (
+        select(Despesa).where(Despesa.deleted_at.is_(None)).order_by(Despesa.data.desc())
+    )
     if veiculo_id:
         stmt = stmt.where(Despesa.veiculo_id == veiculo_id)
     return paginar(db, stmt, page, limit)
+
+
+def obter_despesa(db: Session, despesa_id: uuid.UUID) -> Despesa:
+    despesa = db.get(Despesa, despesa_id)
+    if despesa is None or despesa.deleted_at is not None:
+        raise NotFoundError("Despesa não encontrada.")
+    return despesa
+
+
+def atualizar_despesa(db: Session, despesa_id: uuid.UUID, payload: DespesaUpdate) -> Despesa:
+    despesa = obter_despesa(db, despesa_id)
+    for campo, valor in payload.model_dump(exclude_unset=True).items():
+        setattr(despesa, campo, valor)
+    db.commit()
+    db.refresh(despesa)
+    return despesa
+
+
+def remover_despesa(db: Session, despesa_id: uuid.UUID) -> None:
+    despesa = obter_despesa(db, despesa_id)
+    despesa.deleted_at = datetime.now(UTC)
+    db.commit()
 
 
 def rentabilidade_por_veiculo(db: Session) -> list[RentabilidadeVeiculoOut]:
