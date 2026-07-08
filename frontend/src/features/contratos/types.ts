@@ -4,7 +4,6 @@ export interface Contrato {
   id: string;
   cliente_id: string;
   veiculo_id: string;
-  motorista_id: string | null;
   data_inicio: string;
   data_fim_prevista: string;
   data_fim_real: string | null;

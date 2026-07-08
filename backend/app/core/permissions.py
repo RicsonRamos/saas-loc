@@ -21,8 +21,6 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "checklists:registrar",
         "clientes:visualizar",
         "clientes:editar",
-        "motoristas:visualizar",
-        "motoristas:editar",
         "contratos:visualizar",
         "contratos:emitir",
         "contratos:cancelar",

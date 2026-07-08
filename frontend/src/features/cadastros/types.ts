@@ -47,13 +47,3 @@ export interface Cliente {
   created_at: string;
   updated_at: string;
 }
-
-export interface Motorista {
-  id: string;
-  nome: string;
-  cnh: string;
-  validade_cnh: string;
-  telefone: string | null;
-  cliente_id: string | null;
-  parentesco: string | null;
-}

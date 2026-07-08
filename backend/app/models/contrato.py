@@ -43,9 +43,6 @@ class Contrato(TimestampedBase):
     veiculo_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("veiculos.id"), nullable=False, index=True
     )
-    motorista_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("motoristas.id"), nullable=True
-    )
     data_inicio: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     data_fim_prevista: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     data_fim_real: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

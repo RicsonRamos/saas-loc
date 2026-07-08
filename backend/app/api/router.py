@@ -13,7 +13,6 @@ from app.api import (
     financeiro,
     frota,
     manutencoes,
-    motoristas,
     multas,
     pneus,
     sinistros,
@@ -31,7 +30,6 @@ api_router.include_router(checklists.router)
 # Sem Depends(require_permission) de propósito: única rota pública da API.
 api_router.include_router(veiculo_publico.router)
 api_router.include_router(clientes.router)
-api_router.include_router(motoristas.router)
 api_router.include_router(contratos.router)
 api_router.include_router(manutencoes.router)
 api_router.include_router(financeiro.router)

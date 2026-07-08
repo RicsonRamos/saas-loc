@@ -8,7 +8,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class ContratoCreate(BaseModel):
     cliente_id: UUID
     veiculo_id: UUID
-    motorista_id: UUID | None = None
     data_inicio: datetime
     data_fim_prevista: datetime
     valor_diaria: Decimal = Field(gt=0)
@@ -30,7 +29,6 @@ class ContratoOut(BaseModel):
     id: UUID
     cliente_id: UUID
     veiculo_id: UUID
-    motorista_id: UUID | None
     data_inicio: datetime
     data_fim_prevista: datetime
     data_fim_real: datetime | None

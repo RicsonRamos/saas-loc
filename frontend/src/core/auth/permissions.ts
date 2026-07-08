@@ -13,8 +13,6 @@ export const ROLE_PERMISSIONS: Record<string, Set<string> | "*"> = {
     "checklists:registrar",
     "clientes:visualizar",
     "clientes:editar",
-    "motoristas:visualizar",
-    "motoristas:editar",
     "contratos:visualizar",
     "contratos:emitir",
     "contratos:cancelar",

@@ -15,7 +15,6 @@ from app.models.contrato import (
     Contrato,
     ContratoEvento,
 )
-from app.models.motorista import Motorista
 from app.models.veiculo import (
     STATUS_ALUGADO,
     STATUS_DISPONIVEL,
@@ -56,15 +55,9 @@ def criar_locacao(
     if cliente is None or cliente.deleted_at is not None:
         raise NotFoundError("Cliente não encontrado.")
 
-    if payload.motorista_id is not None:
-        motorista = db.get(Motorista, payload.motorista_id)
-        if motorista is None or motorista.deleted_at is not None:
-            raise NotFoundError("Motorista não encontrado.")
-
     contrato = Contrato(
         cliente_id=payload.cliente_id,
         veiculo_id=payload.veiculo_id,
-        motorista_id=payload.motorista_id,
         data_inicio=payload.data_inicio,
         data_fim_prevista=payload.data_fim_prevista,
         valor_diaria=payload.valor_diaria,

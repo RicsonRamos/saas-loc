@@ -6,7 +6,6 @@ const links = [
   { to: "/", label: "Dashboard" },
   { to: "/frota", label: "Frota" },
   { to: "/clientes", label: "Clientes" },
-  { to: "/motoristas", label: "Motoristas" },
   { to: "/contratos", label: "Contratos" },
   { to: "/manutencoes", label: "Manutenções" },
   { to: "/financeiro", label: "Financeiro" },

@@ -10,7 +10,6 @@ import { formatarData, formatarDataHora, formatarMoeda } from "@/core/format";
 
 import type { Dano, Multa, Sinistro } from "@/features/frota/incidentesTypes";
 
-import { CondutoresSecao } from "./CondutoresSecao";
 import { StatusClienteBadge } from "./StatusClienteBadge";
 import type { HistoricoCliente, HistoricoLocacaoCliente } from "./clienteHistoricoTypes";
 import type { Cliente, StatusCliente } from "./types";
@@ -275,8 +274,6 @@ export function ClienteHistoricoPage() {
               <DataTable columns={colunasDanos} data={historicoQuery.data.danos} />
             )}
           </section>
-
-          {id && <CondutoresSecao clienteId={id} />}
         </div>
       )}
     </div>

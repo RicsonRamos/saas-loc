@@ -13,7 +13,7 @@ import { apiClient, extrairMensagemErro } from "@/core/api/client";
 import { useAuth } from "@/core/auth/AuthContext";
 import { formatarDataHora, formatarMoeda } from "@/core/format";
 import { usePaginatedQuery } from "@/core/hooks/usePaginatedQuery";
-import type { Cliente, Motorista } from "@/features/cadastros/types";
+import type { Cliente } from "@/features/cadastros/types";
 import type { Veiculo } from "@/features/frota/types";
 
 import { ChecklistComparacao } from "@/features/checklists/ChecklistComparacao";
@@ -55,11 +55,6 @@ export function ContratosPage() {
     "/veiculos",
     { page: 1, limit: 100 }
   );
-  const { data: motoristas } = usePaginatedQuery<Motorista>(["motoristas", "select"], "/motoristas", {
-    page: 1,
-    limit: 100,
-  });
-
   const queryClient = useQueryClient();
 
   function invalidarTudo() {
@@ -79,7 +74,6 @@ export function ContratosPage() {
       apiClient.post("/contratos", {
         cliente_id: valores.cliente_id,
         veiculo_id: valores.veiculo_id,
-        motorista_id: valores.motorista_id || null,
         data_inicio: paraIsoUtc(valores.data_inicio),
         data_fim_prevista: paraIsoUtc(valores.data_fim_prevista),
         valor_diaria: valores.valor_diaria,
@@ -245,20 +239,6 @@ export function ContratosPage() {
                 ))}
             </select>
             {errors.veiculo_id && <p className="text-xs text-red-600">{errors.veiculo_id.message}</p>}
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Motorista (opcional)</label>
-            <select
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              {...register("motorista_id")}
-            >
-              <option value="">Nenhum</option>
-              {motoristas?.data.map((motorista) => (
-                <option key={motorista.id} value={motorista.id}>
-                  {motorista.nome}
-                </option>
-              ))}
-            </select>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Início</label>

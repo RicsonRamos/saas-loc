@@ -4,7 +4,6 @@ export const contratoSchema = z
   .object({
     cliente_id: z.string().min(1, "Selecione um cliente."),
     veiculo_id: z.string().min(1, "Selecione um veículo."),
-    motorista_id: z.string().optional().or(z.literal("")),
     data_inicio: z.string().min(1, "Informe a data de início."),
     data_fim_prevista: z.string().min(1, "Informe a data de devolução prevista."),
     valor_diaria: z.coerce.number().gt(0, "Informe um valor de diária maior que zero."),
