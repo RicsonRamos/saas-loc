@@ -8,7 +8,9 @@ from app.core.database import Base
 from app.models import *  # noqa: F401,F403  (garante que todas as tabelas sejam registradas)
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# configparser interpreta "%" como início de interpolação (ex.: "%(nome)s") — escapa
+# como "%%" para suportar URLs com "%" literal (ex.: senha do Supabase URL-encoded).
+config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
