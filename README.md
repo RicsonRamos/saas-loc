@@ -92,6 +92,17 @@ npm run dev
 
 Aplicação em http://localhost:5173. Faça login com o usuário admin criado no passo 2.
 
+## Populando dados de teste
+
+Além do `create_admin.py`, há um seed completo para desenvolvimento — centenas de clientes/veículos/contratos, milhares de leituras de quilometragem, manutenções, alertas e checklists, cobrindo os principais cenários (contratos vencendo, veículos acima da franquia de km, manutenções atrasadas etc.):
+
+```bash
+cd backend
+python scripts/seed_dev_data.py --reset --yes
+```
+
+Recusa rodar fora de um Postgres local (nunca contra produção) e é reexecutável — ver [`docs/10-SEED-DESENVOLVIMENTO.md`](docs/10-SEED-DESENVOLVIMENTO.md) para as flags e o racional.
+
 ## Variáveis de ambiente
 
 | Variável | Onde é usada | Descrição |
