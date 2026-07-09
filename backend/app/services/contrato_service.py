@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -22,8 +22,12 @@ from app.models.veiculo import (
     STATUS_INATIVO,
     Veiculo,
 )
-from app.schemas.contrato import ContratoCreate, ContratoDevolucao
+from app.schemas.contrato import ConsumoKmOut, ContratoCreate, ContratoDevolucao
 from app.services.common import paginar
+
+NIVEL_NORMAL = "normal"
+NIVEL_ATENCAO = "atencao"
+NIVEL_CRITICO = "critico"
 
 
 def _obter_veiculo(db: Session, veiculo_id: uuid.UUID) -> Veiculo:
@@ -62,6 +66,7 @@ def criar_locacao(
         data_fim_prevista=payload.data_fim_prevista,
         valor_diaria=payload.valor_diaria,
         km_inicio=payload.km_inicio if payload.km_inicio is not None else veiculo.km_atual,
+        km_contratado_mensal=payload.km_contratado_mensal,
         status=STATUS_ATIVO,
     )
     db.add(contrato)
@@ -107,6 +112,41 @@ def obter(db: Session, contrato_id: uuid.UUID) -> Contrato:
     if contrato is None:
         raise NotFoundError("Contrato não encontrado.")
     return contrato
+
+
+def calcular_consumo_km(
+    contrato: Contrato, veiculo: Veiculo, hoje: date | None = None
+) -> ConsumoKmOut | None:
+    """Calcula o consumo da franquia de km contratada, prorateada pelos dias decorridos.
+
+    Retorna None quando o contrato não tem franquia mensal configurada.
+    """
+    if contrato.km_contratado_mensal is None:
+        return None
+
+    referencia = contrato.data_fim_real or datetime.now(UTC)
+    dias_decorridos = max((referencia - contrato.data_inicio).days, 1)
+    km_previsto = round(contrato.km_contratado_mensal * dias_decorridos / 30)
+
+    km_final_ou_atual = contrato.km_final if contrato.km_final is not None else veiculo.km_atual
+    km_percorrido = max(km_final_ou_atual - (contrato.km_inicio or 0), 0)
+
+    percentual = (km_percorrido / km_previsto * 100) if km_previsto > 0 else None
+    if percentual is None:
+        nivel = NIVEL_NORMAL
+    elif percentual > 100:
+        nivel = NIVEL_CRITICO
+    elif percentual >= 80:
+        nivel = NIVEL_ATENCAO
+    else:
+        nivel = NIVEL_NORMAL
+
+    return ConsumoKmOut(
+        km_previsto=km_previsto,
+        km_percorrido=km_percorrido,
+        percentual=percentual,
+        nivel=nivel,
+    )
 
 
 def devolver(

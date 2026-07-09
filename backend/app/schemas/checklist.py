@@ -31,6 +31,10 @@ class ChecklistItemCreate(BaseModel):
         return v
 
 
+class ChecklistItemFotoUpdate(BaseModel):
+    foto_attachment_id: UUID
+
+
 class ChecklistItemOut(BaseModel):
     id: UUID
     item: str

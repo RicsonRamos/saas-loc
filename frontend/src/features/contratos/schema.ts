@@ -7,6 +7,10 @@ export const contratoSchema = z
     data_inicio: z.string().min(1, "Informe a data de início."),
     data_fim_prevista: z.string().min(1, "Informe a data de devolução prevista."),
     valor_diaria: z.coerce.number().gt(0, "Informe um valor de diária maior que zero."),
+    km_contratado_mensal: z.preprocess(
+      (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
+      z.number().int().nonnegative("A quilometragem contratada não pode ser negativa.").optional()
+    ),
   })
   .refine((v) => new Date(v.data_fim_prevista) > new Date(v.data_inicio), {
     message: "A data de devolução prevista deve ser posterior à data de início.",

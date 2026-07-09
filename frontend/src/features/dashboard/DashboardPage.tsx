@@ -8,11 +8,17 @@ import { formatarMoeda } from "@/core/format";
 import { STATUS_VEICULO_OPCOES } from "@/features/frota/StatusVeiculoBadge";
 import type { StatusVeiculo } from "@/features/frota/types";
 
-import type { DashboardResumo } from "./types";
+import type { DashboardResumo, PrioridadeAlerta } from "./types";
 
 const ROTULO_POR_STATUS = Object.fromEntries(
   STATUS_VEICULO_OPCOES.map((opcao) => [opcao.valor, opcao.rotulo])
 ) as Record<StatusVeiculo, string>;
+
+const ESTILO_POR_PRIORIDADE: Record<PrioridadeAlerta, string> = {
+  normal: "border-slate-200 bg-slate-50 text-slate-700",
+  atencao: "border-amber-200 bg-amber-50 text-amber-800",
+  critico: "border-red-200 bg-red-50 text-red-800",
+};
 
 function Card({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
@@ -108,8 +114,11 @@ export function DashboardPage() {
             ) : (
               <ul className="flex flex-col gap-2 text-sm">
                 {data.alertas.map((alerta, indice) => (
-                  <li key={`${alerta.tipo}-${alerta.veiculo_id ?? indice}`}>
-                    • {alerta.mensagem}
+                  <li
+                    key={`${alerta.tipo}-${alerta.veiculo_id ?? indice}`}
+                    className={`rounded-md border px-3 py-2 ${ESTILO_POR_PRIORIDADE[alerta.prioridade]}`}
+                  >
+                    {alerta.mensagem}
                   </li>
                 ))}
               </ul>

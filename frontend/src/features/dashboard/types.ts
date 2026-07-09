@@ -9,9 +9,12 @@ export interface FinanceiroMes {
   lucro: string;
 }
 
+export type PrioridadeAlerta = "normal" | "atencao" | "critico";
+
 export interface Alerta {
   tipo: string;
   mensagem: string;
+  prioridade: PrioridadeAlerta;
   veiculo_id: string | null;
   veiculo_placa: string | null;
 }

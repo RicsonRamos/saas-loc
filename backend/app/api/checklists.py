@@ -12,6 +12,7 @@ from app.schemas.checklist import (
     AssinaturaOut,
     ChecklistComparacaoOut,
     ChecklistCreate,
+    ChecklistItemFotoUpdate,
     ChecklistItemOut,
     ChecklistOut,
 )
@@ -87,6 +88,26 @@ def remover_checklist(
     usuario: Usuario = Depends(require_permission("checklists:registrar")),
 ) -> None:
     checklist_service.remover(db, checklist_id, usuario_id=usuario.id, ip=_ip_do_cliente(request))
+
+
+@router.patch("/checklists/{checklist_id}/itens/{item_id}", response_model=ChecklistItemOut)
+def atualizar_foto_item_checklist(
+    checklist_id: UUID,
+    item_id: UUID,
+    payload: ChecklistItemFotoUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(require_permission("checklists:registrar")),
+) -> ChecklistItemOut:
+    item = checklist_service.atualizar_foto_item(
+        db,
+        checklist_id,
+        item_id,
+        payload.foto_attachment_id,
+        usuario_id=usuario.id,
+        ip=_ip_do_cliente(request),
+    )
+    return ChecklistItemOut.model_validate(item)
 
 
 @router.post(

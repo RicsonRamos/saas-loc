@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { FileUpload } from "@/components/shared/FileUpload";
 import { SignaturePad } from "@/components/shared/SignaturePad";
 import { apiClient, extrairMensagemErro } from "@/core/api/client";
 
@@ -54,6 +55,8 @@ export function ChecklistForm({
   const [checklistCriado, setChecklistCriado] = useState<Checklist | null>(null);
   const [responsavelNome, setResponsavelNome] = useState("");
   const [erro, setErro] = useState<string | null>(null);
+  const [fotosEnviadas, setFotosEnviadas] = useState<Record<string, string>>({});
+  const [itemEnviandoFoto, setItemEnviandoFoto] = useState<string | null>(null);
 
   function atualizarItem(item: ItemChecklist, campo: "situacao" | "observacao", valor: string) {
     setItensEstado((atual) => ({ ...atual, [item]: { ...atual[item], [campo]: valor } }));
@@ -81,6 +84,28 @@ export function ChecklistForm({
     onError: (error) => setErro(extrairMensagemErro(error)),
   });
 
+  const enviarFotoItem = useMutation({
+    mutationFn: async ({ itemId, arquivo }: { itemId: string; arquivo: File }) => {
+      if (!checklistCriado) throw new Error("Checklist ainda não foi criado.");
+      const formData = new FormData();
+      formData.append("arquivo", arquivo);
+      formData.append("entidade_tipo", "checklist_item");
+      formData.append("entidade_id", itemId);
+      const { data: attachment } = await apiClient.post<{ id: string }>("/attachments", formData);
+      await apiClient.patch(`/checklists/${checklistCriado.id}/itens/${itemId}`, {
+        foto_attachment_id: attachment.id,
+      });
+      return { itemId, attachmentId: attachment.id };
+    },
+    onMutate: ({ itemId }) => setItemEnviandoFoto(itemId),
+    onSuccess: ({ itemId, attachmentId }) => {
+      setFotosEnviadas((atual) => ({ ...atual, [itemId]: attachmentId }));
+      setErro(null);
+    },
+    onError: (error) => setErro(extrairMensagemErro(error)),
+    onSettled: () => setItemEnviandoFoto(null),
+  });
+
   const enviarAssinatura = useMutation({
     mutationFn: async (blob: Blob) => {
       if (!checklistCriado) throw new Error("Checklist ainda não foi criado.");
@@ -104,25 +129,55 @@ export function ChecklistForm({
 
   if (checklistCriado) {
     return (
-      <div className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
-        <h3 className="mb-3 text-sm font-semibold text-slate-800">
-          {TITULOS[tipo]} — assinatura do responsável
-        </h3>
-        <div className="mb-3">
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Nome do responsável
-          </label>
-          <input
-            className="w-full max-w-sm rounded-md border border-slate-300 px-3 py-2 text-sm"
-            value={responsavelNome}
-            onChange={(event) => setResponsavelNome(event.target.value)}
-          />
+      <div className="mb-6 flex flex-col gap-4">
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <h3 className="mb-3 text-sm font-semibold text-slate-800">
+            {TITULOS[tipo]} — fotos dos itens (opcional)
+          </h3>
+          <div className="flex flex-col gap-2">
+            {checklistCriado.itens.map((item) => (
+              <div
+                key={item.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-slate-50 p-2"
+              >
+                <span className="text-sm font-medium text-slate-700">
+                  {ITENS.find((i) => i.valor === item.item)?.rotulo ?? item.item}
+                </span>
+                {fotosEnviadas[item.id] ? (
+                  <span className="text-xs font-medium text-emerald-700">Foto enviada</span>
+                ) : (
+                  <FileUpload
+                    disabled={itemEnviandoFoto === item.id}
+                    onArquivoSelecionado={(arquivo) =>
+                      enviarFotoItem.mutate({ itemId: item.id, arquivo })
+                    }
+                  />
+                )}
+              </div>
+            ))}
+          </div>
         </div>
-        <SignaturePad onAssinaturaPronta={(blob) => enviarAssinatura.mutate(blob)} />
-        {erro && <p className="mt-2 text-sm text-red-600">{erro}</p>}
-        {enviarAssinatura.isPending && (
-          <p className="mt-2 text-sm text-slate-500">Enviando assinatura...</p>
-        )}
+
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <h3 className="mb-3 text-sm font-semibold text-slate-800">
+            {TITULOS[tipo]} — assinatura do responsável
+          </h3>
+          <div className="mb-3">
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Nome do responsável
+            </label>
+            <input
+              className="w-full max-w-sm rounded-md border border-slate-300 px-3 py-2 text-sm"
+              value={responsavelNome}
+              onChange={(event) => setResponsavelNome(event.target.value)}
+            />
+          </div>
+          <SignaturePad onAssinaturaPronta={(blob) => enviarAssinatura.mutate(blob)} />
+          {erro && <p className="mt-2 text-sm text-red-600">{erro}</p>}
+          {enviarAssinatura.isPending && (
+            <p className="mt-2 text-sm text-slate-500">Enviando assinatura...</p>
+          )}
+        </div>
       </div>
     );
   }

@@ -8,6 +8,7 @@ from app.models.contrato import STATUS_ATIVO, Contrato
 from app.models.financeiro import STATUS_PAGAMENTO_PAGO, Despesa, Pagamento
 from app.models.manutencao import Manutencao
 from app.models.multa import STATUS_MULTA_PENDENTE, Multa
+from app.models.plano_manutencao import PlanoManutencao
 from app.models.veiculo import Veiculo
 from app.schemas.dashboard import (
     AlertaOut,
@@ -15,7 +16,20 @@ from app.schemas.dashboard import (
     FinanceiroMesOut,
     VencimentosResumoOut,
 )
+from app.services import contrato_service, plano_manutencao_service
 from app.services.veiculo_service import calcular_status_efetivo
+
+ROTULOS_TIPO_PLANO_MANUTENCAO: dict[str, str] = {
+    "troca_oleo": "Troca de óleo",
+    "troca_filtros": "Troca de filtros",
+    "pastilhas_freio": "Pastilhas de freio",
+    "pneus": "Pneus",
+    "revisao": "Revisão periódica",
+    "alinhamento_balanceamento": "Alinhamento e balanceamento",
+    "licenciamento": "Licenciamento",
+    "seguro": "Seguro",
+    "outro": "Manutenção",
+}
 
 JANELA_VENCIMENTO_DIAS = 30
 JANELA_MANUTENCAO_KM = 500
@@ -84,6 +98,7 @@ def _alertas_documentos(veiculos: list[Veiculo], hoje) -> list[AlertaOut]:
                     AlertaOut(
                         tipo=tipo_vencido,
                         mensagem=f"{rotulo} do veículo {veiculo.placa} está vencido.",
+                        prioridade="critico",
                         veiculo_id=veiculo.id,
                         veiculo_placa=veiculo.placa,
                     )
@@ -94,6 +109,7 @@ def _alertas_documentos(veiculos: list[Veiculo], hoje) -> list[AlertaOut]:
                     AlertaOut(
                         tipo=tipo_vencendo,
                         mensagem=f"{rotulo} do veículo {veiculo.placa} vence {prazo}.",
+                        prioridade="atencao",
                         veiculo_id=veiculo.id,
                         veiculo_placa=veiculo.placa,
                     )
@@ -131,6 +147,7 @@ def _alertas_manutencao(db: Session, veiculos: list[Veiculo], hoje) -> list[Aler
                             f"Veículo {veiculo.placa} precisa de revisão em "
                             f"{max(faltam_km, 0)} km."
                         ),
+                        prioridade="critico" if faltam_km <= 0 else "atencao",
                         veiculo_id=veiculo.id,
                         veiculo_placa=veiculo.placa,
                     )
@@ -142,6 +159,7 @@ def _alertas_manutencao(db: Session, veiculos: list[Veiculo], hoje) -> list[Aler
                     AlertaOut(
                         tipo="revisao_data",
                         mensagem=f"Veículo {veiculo.placa} tem revisão agendada em breve.",
+                        prioridade="critico" if dias <= 0 else "atencao",
                         veiculo_id=veiculo.id,
                         veiculo_placa=veiculo.placa,
                     )
@@ -165,10 +183,76 @@ def _alertas_devolucao_hoje(db: Session, hoje) -> list[AlertaOut]:
                 AlertaOut(
                     tipo="devolucao_hoje",
                     mensagem=f"Devolução do veículo {veiculo.placa} prevista para hoje.",
+                    prioridade="atencao",
                     veiculo_id=veiculo.id,
                     veiculo_placa=veiculo.placa,
                 )
             )
+    return alertas
+
+
+def _alertas_franquia_km(db: Session, hoje) -> list[AlertaOut]:
+    contratos = (
+        db.execute(
+            select(Contrato, Veiculo)
+            .join(Veiculo, Veiculo.id == Contrato.veiculo_id)
+            .where(Contrato.status == STATUS_ATIVO, Contrato.km_contratado_mensal.isnot(None))
+        )
+        .all()
+    )
+    alertas: list[AlertaOut] = []
+    for contrato, veiculo in contratos:
+        consumo = contrato_service.calcular_consumo_km(contrato, veiculo, hoje)
+        if consumo is None or consumo.nivel == "normal" or consumo.percentual is None:
+            continue
+        alertas.append(
+            AlertaOut(
+                tipo="franquia_km_excedida" if consumo.nivel == "critico" else "franquia_km_proxima",
+                mensagem=(
+                    f"Veículo {veiculo.placa} já rodou {consumo.percentual:.0f}% da "
+                    "franquia de km contratada."
+                ),
+                prioridade=consumo.nivel,
+                veiculo_id=veiculo.id,
+                veiculo_placa=veiculo.placa,
+            )
+        )
+    return alertas
+
+
+def _alertas_planos_manutencao(db: Session, veiculos: list[Veiculo], hoje) -> list[AlertaOut]:
+    veiculos_por_id = {v.id: v for v in veiculos}
+    planos = (
+        db.execute(
+            select(PlanoManutencao).where(
+                PlanoManutencao.ativo.is_(True), PlanoManutencao.deleted_at.is_(None)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    alertas: list[AlertaOut] = []
+    for plano in planos:
+        veiculo = veiculos_por_id.get(plano.veiculo_id)
+        if veiculo is None:
+            continue
+        prioridade, faltam_km, _faltam_dias = plano_manutencao_service.calcular_status(
+            plano, veiculo, hoje
+        )
+        if prioridade == "normal":
+            continue
+        rotulo = ROTULOS_TIPO_PLANO_MANUTENCAO.get(plano.tipo, plano.tipo)
+        situacao = "vencida" if prioridade == "critico" else "próxima do vencimento"
+        alertas.append(
+            AlertaOut(
+                tipo=f"manutencao_{plano.tipo}",
+                mensagem=f"{rotulo} do veículo {veiculo.placa} está {situacao}.",
+                prioridade=prioridade,
+                veiculo_id=veiculo.id,
+                veiculo_placa=veiculo.placa,
+            )
+        )
     return alertas
 
 
@@ -197,6 +281,7 @@ def _alertas_multas_pendentes(db: Session, veiculos: list[Veiculo]) -> list[Aler
             AlertaOut(
                 tipo="multas_pendentes",
                 mensagem=f"Veículo {veiculo.placa} tem {total} multa(s) pendente(s).",
+                prioridade="atencao",
                 veiculo_id=veiculo.id,
                 veiculo_placa=veiculo.placa,
             )
@@ -213,6 +298,8 @@ def resumo(db: Session, incluir_financeiro: bool) -> DashboardResumoOut:
         *_alertas_documentos(veiculos, hoje),
         *_alertas_manutencao(db, veiculos, hoje),
         *_alertas_devolucao_hoje(db, hoje),
+        *_alertas_franquia_km(db, hoje),
+        *_alertas_planos_manutencao(db, veiculos, hoje),
         *_alertas_multas_pendentes(db, veiculos),
     ]
 

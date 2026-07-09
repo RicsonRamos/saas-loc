@@ -228,17 +228,6 @@ export function VeiculosPage() {
     }
   }
 
-  function registrarKm(veiculo: Veiculo) {
-    const novoKm = window.prompt(`Nova quilometragem para ${veiculo.placa}:`, String(veiculo.km_atual));
-    if (novoKm === null) return;
-    const valor = Number(novoKm);
-    if (Number.isNaN(valor) || valor < 0) {
-      setErroAcao("Informe uma quilometragem válida.");
-      return;
-    }
-    acaoRapida.mutate({ id: veiculo.id, payload: { km_atual: valor } });
-  }
-
   function enviarParaManutencao(veiculo: Veiculo) {
     if (window.confirm(`Enviar o veículo ${veiculo.placa} para manutenção?`)) {
       acaoRapida.mutate({ id: veiculo.id, payload: { status: "em_manutencao" } });
@@ -279,12 +268,6 @@ export function VeiculosPage() {
                   onClick={() => abrirEdicao(veiculo)}
                 >
                   Editar
-                </button>
-                <button
-                  className="text-xs text-slate-700 underline"
-                  onClick={() => registrarKm(veiculo)}
-                >
-                  Registrar KM
                 </button>
                 {veiculo.status !== "em_manutencao" && (
                   <button

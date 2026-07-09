@@ -18,6 +18,7 @@ import type { Veiculo } from "@/features/frota/types";
 
 import { ChecklistComparacao } from "@/features/checklists/ChecklistComparacao";
 import { ChecklistForm } from "@/features/checklists/ChecklistForm";
+import { ChecklistHistorico } from "@/features/checklists/ChecklistHistorico";
 import type { TipoChecklist } from "@/features/checklists/checklistTypes";
 
 import { contratoSchema, type ContratoFormInput, type ContratoFormValues } from "./schema";
@@ -26,6 +27,22 @@ import type { Contrato } from "./types";
 
 function paraIsoUtc(dataLocal: string): string {
   return new Date(dataLocal).toISOString();
+}
+
+const ESTILO_POR_NIVEL: Record<string, string> = {
+  normal: "bg-slate-100 text-slate-700",
+  atencao: "bg-amber-100 text-amber-800",
+  critico: "bg-red-100 text-red-800",
+};
+
+function ConsumoKmBadge({ contrato }: { contrato: Contrato }) {
+  if (!contrato.consumo_km) return <span className="text-xs text-slate-400">—</span>;
+  const { percentual, nivel, km_percorrido } = contrato.consumo_km;
+  return (
+    <span className={`rounded-full px-2 py-1 text-xs font-medium ${ESTILO_POR_NIVEL[nivel]}`}>
+      {km_percorrido} km{percentual !== null ? ` (${percentual.toFixed(0)}%)` : ""}
+    </span>
+  );
 }
 
 export function ContratosPage() {
@@ -39,6 +56,7 @@ export function ContratosPage() {
     tipo: TipoChecklist;
   } | null>(null);
   const [comparacaoContratoId, setComparacaoContratoId] = useState<string | null>(null);
+  const [historicoContratoId, setHistoricoContratoId] = useState<string | null>(null);
   const limit = 20;
 
   const { data, isLoading, isError, refetch } = usePaginatedQuery<Contrato>(
@@ -77,6 +95,7 @@ export function ContratosPage() {
         data_inicio: paraIsoUtc(valores.data_inicio),
         data_fim_prevista: paraIsoUtc(valores.data_fim_prevista),
         valor_diaria: valores.valor_diaria,
+        km_contratado_mensal: valores.km_contratado_mensal ?? null,
       }),
     onSuccess: () => {
       invalidarTudo();
@@ -125,6 +144,11 @@ export function ContratosPage() {
       cell: (info) => formatarMoeda(info.getValue()),
     }),
     columnHelper.accessor("status", { header: "Status", cell: (info) => <StatusContratoBadge status={info.getValue()} /> }),
+    columnHelper.display({
+      id: "consumo_km",
+      header: "Franquia km",
+      cell: (info) => <ConsumoKmBadge contrato={info.row.original} />,
+    }),
     columnHelper.display({
       id: "acoes",
       header: "Ações",
@@ -180,6 +204,16 @@ export function ContratosPage() {
                 }
               >
                 {comparacaoContratoId === contrato.id ? "Ocultar comparação" : "Comparar"}
+              </button>
+            )}
+            {podeVerComparacao && (
+              <button
+                className="text-xs text-slate-700 underline"
+                onClick={() =>
+                  setHistoricoContratoId(historicoContratoId === contrato.id ? null : contrato.id)
+                }
+              >
+                {historicoContratoId === contrato.id ? "Ocultar histórico" : "Histórico checklists"}
               </button>
             )}
           </div>
@@ -272,6 +306,20 @@ export function ContratosPage() {
               <p className="text-xs text-red-600">{errors.valor_diaria.message}</p>
             )}
           </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Km mensal contratado (opcional)
+            </label>
+            <input
+              type="number"
+              min={0}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              {...register("km_contratado_mensal")}
+            />
+            {errors.km_contratado_mensal && (
+              <p className="text-xs text-red-600">{errors.km_contratado_mensal.message}</p>
+            )}
+          </div>
           {erroForm && <p className="col-span-full text-sm text-red-600">{erroForm}</p>}
           <div className="col-span-full">
             <Button type="submit" disabled={isSubmitting}>
@@ -295,6 +343,12 @@ export function ContratosPage() {
       {comparacaoContratoId && (
         <div className="mb-6">
           <ChecklistComparacao contratoId={comparacaoContratoId} />
+        </div>
+      )}
+
+      {historicoContratoId && (
+        <div className="mb-6">
+          <ChecklistHistorico contratoId={historicoContratoId} />
         </div>
       )}
 

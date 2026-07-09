@@ -12,6 +12,7 @@ class ContratoCreate(BaseModel):
     data_fim_prevista: datetime
     valor_diaria: Decimal = Field(gt=0)
     km_inicio: int | None = Field(default=None, ge=0)
+    km_contratado_mensal: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def valida_periodo(self) -> "ContratoCreate":
@@ -25,6 +26,13 @@ class ContratoDevolucao(BaseModel):
     km_final: int | None = Field(default=None, ge=0)
 
 
+class ConsumoKmOut(BaseModel):
+    km_previsto: int
+    km_percorrido: int
+    percentual: float | None
+    nivel: str
+
+
 class ContratoOut(BaseModel):
     id: UUID
     cliente_id: UUID
@@ -36,6 +44,8 @@ class ContratoOut(BaseModel):
     valor_diaria: Decimal
     km_inicio: int | None
     km_final: int | None
+    km_contratado_mensal: int | None
+    consumo_km: ConsumoKmOut | None = None
     version: int
     created_at: datetime
     updated_at: datetime

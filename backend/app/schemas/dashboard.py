@@ -18,6 +18,7 @@ class FinanceiroMesOut(BaseModel):
 class AlertaOut(BaseModel):
     tipo: str
     mensagem: str
+    prioridade: str
     veiculo_id: UUID | None = None
     veiculo_placa: str | None = None
 

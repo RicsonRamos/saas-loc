@@ -6,8 +6,10 @@ from app.models.cliente import Cliente
 from app.models.contrato import Contrato, ContratoEvento
 from app.models.dano import Dano
 from app.models.financeiro import Despesa, Pagamento
+from app.models.leitura_km import LeituraKm
 from app.models.manutencao import Manutencao
 from app.models.multa import Multa
+from app.models.plano_manutencao import PlanoManutencao
 from app.models.pneu import Pneu
 from app.models.sinistro import Sinistro
 from app.models.usuario import Usuario
@@ -27,8 +29,10 @@ __all__ = [
     "Dano",
     "Despesa",
     "Pagamento",
+    "LeituraKm",
     "Manutencao",
     "Multa",
+    "PlanoManutencao",
     "Pneu",
     "Sinistro",
     "Usuario",

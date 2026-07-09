@@ -193,3 +193,68 @@ def test_assinatura_vincula_attachment_ao_checklist(client, db_session):
     assert corpo["checklist_id"] == checklist["id"]
     assert corpo["attachment_id"] == attachment["id"]
     assert corpo["responsavel_nome"] == "João da Silva"
+
+
+@pytest.mark.skipif(
+    not _storage_disponivel(),
+    reason="Storage indisponível (configure STORAGE_* no .env para rodar este teste)",
+)
+def test_vincula_foto_a_item_do_checklist(client, db_session):
+    usuario = criar_usuario(db_session, role="administrador", email="admin_chk7@teste.com")
+    headers = auth_headers(usuario)
+    veiculo_id = _criar_veiculo(client, headers, "CHK7A23")
+    cliente_id = _criar_cliente(client, headers, "10000000007")
+    contrato = _criar_contrato(client, headers, veiculo_id, cliente_id)
+
+    checklist = client.post(
+        "/api/v1/checklists", json=_payload_checklist(contrato["id"], "entrega"), headers=headers
+    ).json()
+    item = checklist["itens"][0]
+
+    png = bytes.fromhex(
+        "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4"
+        "890000000a49444154789c6360000002000100ffff03000006000557bf"
+        "abd4000000004945454e44ae426082"
+    )
+    attachment = client.post(
+        "/api/v1/attachments",
+        data={"entidade_tipo": "checklist_item", "entidade_id": item["id"]},
+        files={"arquivo": ("dano.png", png, "image/png")},
+        headers=headers,
+    ).json()
+
+    resp = client.patch(
+        f"/api/v1/checklists/{checklist['id']}/itens/{item['id']}",
+        json={"foto_attachment_id": attachment["id"]},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["foto_attachment_id"] == attachment["id"]
+
+    checklist_atualizado = client.get(
+        f"/api/v1/checklists/{checklist['id']}", headers=headers
+    ).json()
+    item_atualizado = next(i for i in checklist_atualizado["itens"] if i["id"] == item["id"])
+    assert item_atualizado["foto_attachment_id"] == attachment["id"]
+
+
+def test_foto_de_item_de_outro_checklist_retorna_404(client, db_session):
+    usuario = criar_usuario(db_session, role="administrador", email="admin_chk8@teste.com")
+    headers = auth_headers(usuario)
+    veiculo_id = _criar_veiculo(client, headers, "CHK8A23")
+    cliente_id = _criar_cliente(client, headers, "10000000008")
+    contrato = _criar_contrato(client, headers, veiculo_id, cliente_id)
+
+    checklist = client.post(
+        "/api/v1/checklists", json=_payload_checklist(contrato["id"], "entrega"), headers=headers
+    ).json()
+    item = checklist["itens"][0]
+
+    import uuid
+
+    resp = client.patch(
+        f"/api/v1/checklists/{uuid.uuid4()}/itens/{item['id']}",
+        json={"foto_attachment_id": str(uuid.uuid4())},
+        headers=headers,
+    )
+    assert resp.status_code == 404

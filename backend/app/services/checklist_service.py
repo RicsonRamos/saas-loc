@@ -163,6 +163,34 @@ def comparacao(db: Session, contrato_id: uuid.UUID) -> dict:
     }
 
 
+def atualizar_foto_item(
+    db: Session,
+    checklist_id: uuid.UUID,
+    item_id: uuid.UUID,
+    foto_attachment_id: uuid.UUID,
+    usuario_id: uuid.UUID | None = None,
+    ip: str | None = None,
+) -> ChecklistItem:
+    item = db.get(ChecklistItem, item_id)
+    if item is None or item.deleted_at is not None or item.checklist_id != checklist_id:
+        raise NotFoundError("Item de checklist não encontrado.")
+    attachment_service.obter(db, foto_attachment_id)
+
+    item.foto_attachment_id = foto_attachment_id
+    registrar_auditoria(
+        db,
+        usuario_id=usuario_id,
+        acao="atualizar",
+        entidade="checklist_item",
+        entidade_id=item.id,
+        dados_novos={"foto_attachment_id": str(foto_attachment_id)},
+        ip=ip,
+    )
+    db.commit()
+    db.refresh(item)
+    return item
+
+
 def criar_assinatura(
     db: Session,
     checklist_id: uuid.UUID,

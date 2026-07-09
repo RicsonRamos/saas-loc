@@ -13,6 +13,7 @@ from app.models.cliente import Cliente
 from app.models.contrato import STATUS_ATIVO, STATUS_ENCERRADO, Contrato
 from app.models.dano import Dano
 from app.models.financeiro import STATUS_PAGAMENTO_PAGO, Despesa, Pagamento
+from app.models.leitura_km import LeituraKm
 from app.models.manutencao import Manutencao
 from app.models.multa import Multa
 from app.models.sinistro import Sinistro
@@ -214,6 +215,7 @@ def _montar_eventos_km(
     contratos: list[tuple[Contrato, str]],
     manutencoes: list[Manutencao],
     abastecimentos: list[Abastecimento],
+    leituras_km: list[LeituraKm] | None = None,
 ) -> list[EventoKmOut]:
     eventos: list[EventoKmOut] = []
     for contrato, _cliente_nome in contratos:
@@ -251,6 +253,15 @@ def _montar_eventos_km(
                 km=abastecimento.km,
                 origem="abastecimento",
                 descricao="Registrado em abastecimento",
+            )
+        )
+    for leitura in leituras_km or []:
+        eventos.append(
+            EventoKmOut(
+                data=leitura.data_leitura,
+                km=leitura.km,
+                origem="leitura_km",
+                descricao="Atualização periódica de quilometragem",
             )
         )
     eventos.sort(key=lambda e: e.data, reverse=True)
@@ -381,6 +392,16 @@ def historico(db: Session, veiculo_id: uuid.UUID) -> HistoricoVeiculoOut:
         .all()
     )
 
+    leituras_km = (
+        db.execute(
+            select(LeituraKm)
+            .where(LeituraKm.veiculo_id == veiculo_id, LeituraKm.deleted_at.is_(None))
+            .order_by(LeituraKm.data_leitura.desc())
+        )
+        .scalars()
+        .all()
+    )
+
     return HistoricoVeiculoOut(
         contratos=[
             HistoricoContratoOut(
@@ -402,7 +423,7 @@ def historico(db: Session, veiculo_id: uuid.UUID) -> HistoricoVeiculoOut:
         multas=[MultaOut.model_validate(m) for m in multas],
         sinistros=[SinistroOut.model_validate(s) for s in sinistros],
         danos=[DanoOut.model_validate(d) for d in danos],
-        eventos_km=_montar_eventos_km(contratos, manutencoes, abastecimentos),
+        eventos_km=_montar_eventos_km(contratos, manutencoes, abastecimentos, leituras_km),
         indicadores=_calcular_indicadores(
             db, veiculo, contratos, manutencoes, despesas, abastecimentos
         ),

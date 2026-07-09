@@ -13,7 +13,9 @@ import { AbastecimentosSecao } from "./AbastecimentosSecao";
 import { AnexosSecao } from "./AnexosSecao";
 import { DanosSecao } from "./DanosSecao";
 import { HistoricoAuditoriaSecao } from "./HistoricoAuditoriaSecao";
+import { LeiturasKmSecao } from "./LeiturasKmSecao";
 import { MultasSecao } from "./MultasSecao";
+import { PlanosManutencaoSecao } from "./PlanosManutencaoSecao";
 import { PneusSecao } from "./PneusSecao";
 import { SinistrosSecao } from "./SinistrosSecao";
 import { StatusVeiculoBadge } from "./StatusVeiculoBadge";
@@ -36,6 +38,7 @@ const ROTULOS_ORIGEM_KM: Record<string, string> = {
   contrato_devolucao: "Devolução de locação",
   manutencao: "Manutenção",
   abastecimento: "Abastecimento",
+  leitura_km: "Leitura periódica",
 };
 
 const colunasEventosKm = [
@@ -343,6 +346,8 @@ export function VeiculoHistoricoPage() {
             )}
           </section>
 
+          {id && <LeiturasKmSecao veiculoId={id} />}
+          {id && <PlanosManutencaoSecao veiculoId={id} />}
           {id && <AbastecimentosSecao veiculoId={id} />}
           {id && <PneusSecao veiculoId={id} />}
           {id && <MultasSecao veiculoId={id} />}

@@ -12,8 +12,10 @@ from app.api import (
     dashboard,
     financeiro,
     frota,
+    leituras_km,
     manutencoes,
     multas,
+    planos_manutencao,
     pneus,
     sinistros,
     veiculo_publico,
@@ -32,9 +34,11 @@ api_router.include_router(veiculo_publico.router)
 api_router.include_router(clientes.router)
 api_router.include_router(contratos.router)
 api_router.include_router(manutencoes.router)
+api_router.include_router(planos_manutencao.router)
 api_router.include_router(financeiro.router)
 api_router.include_router(multas.router)
 api_router.include_router(sinistros.router)
 api_router.include_router(danos.router)
 api_router.include_router(abastecimentos.router)
 api_router.include_router(pneus.router)
+api_router.include_router(leituras_km.router)
