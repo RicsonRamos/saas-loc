@@ -31,6 +31,18 @@ python scripts/seed_dev_data.py --reset --yes
 | `--reset` | apaga (`TRUNCATE ... CASCADE`) todas as tabelas da aplicação antes de semear. Sem essa flag, o script recusa rodar se detectar dados de um seed anterior (usuários com e-mail `@devseed.local`) — rode com `--reset` para recriar do zero. |
 | `--yes` | pula a confirmação interativa do guard de ambiente (útil em scripts não interativos). |
 | `--com-uploads` | habilita upload real de fotos/assinaturas fictícias via `attachment_service` (Supabase Storage) para um subconjunto de itens de checklist. **Desabilitado por padrão** — só habilite depois de confirmar que o bucket do seu `.env` é de desenvolvimento, não o de produção. |
+| `--permitir-host HOST` | libera pontualmente **um** host fora da allowlist local (ex.: um projeto Supabase que você tem certeza de ser só de desenvolvimento/demonstração, sem dados reais). O valor precisa bater exatamente com o host resolvido de `DATABASE_URL` — não existe um `--force` genérico, o host tem que ser digitado por extenso a cada execução, e o script ainda pede para confirmar digitando o host de volta (a menos que `--yes` também seja usado). Use com cuidado: nada garante que esse host continuará sendo só de desenvolvimento no futuro. |
+
+## Rodando contra um banco remoto de desenvolvimento (ex.: Supabase de demo)
+
+Se o projeto usa um Supabase compartilhado como "ambiente de desenvolvimento/demo" (sem dados reais de clientes/operação ainda) e você quer popular esse mesmo banco — por exemplo, para que uma demo pública mostre dados variados — use `--permitir-host` explicitamente, sem `--yes`, para ver a confirmação interativa:
+
+```bash
+cd backend
+python scripts/seed_dev_data.py --permitir-host "aws-1-us-west-2.pooler.supabase.com"
+```
+
+Sem `--reset` isso só adiciona dados (preserva usuários/veículos já existentes). Reavalie sempre que esse banco deixar de ser "só demo" — nesse ponto, pare de usar `--permitir-host` para ele.
 
 ## O que é gerado
 

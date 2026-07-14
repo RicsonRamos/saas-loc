@@ -3,20 +3,29 @@ o sistema sem cadastro manual. Ver docs/10-SEED-DESENVOLVIMENTO.md.
 
 Uso:
     python scripts/seed_dev_data.py [--reset] [--yes] [--com-uploads]
+                                     [--permitir-host HOST]
 
---reset       apaga (TRUNCATE) todas as tabelas da aplicação antes de semear.
-              Sem essa flag, o script recusa rodar se já detectar dados de um
-              seed anterior (idempotência simples).
---yes         pula a confirmação interativa do guard de ambiente (útil em
-              scripts/CI, ex.: `docker exec`).
---com-uploads habilita upload real de fotos/assinaturas fictícias via o
-              attachment_service (Supabase Storage) para um subconjunto de
-              itens de checklist. Desabilitado por padrão — não arrisque
-              sem confirmar que o bucket configurado no seu .env é de
-              desenvolvimento, não o de produção.
+--reset          apaga (TRUNCATE) todas as tabelas da aplicação antes de semear.
+                 Sem essa flag, o script recusa rodar se já detectar dados de um
+                 seed anterior (idempotência simples).
+--yes            pula a confirmação interativa do guard de ambiente (útil em
+                 scripts/CI, ex.: `docker exec`).
+--com-uploads    habilita upload real de fotos/assinaturas fictícias via o
+                 attachment_service (Supabase Storage) para um subconjunto de
+                 itens de checklist. Desabilitado por padrão — não arrisque
+                 sem confirmar que o bucket configurado no seu .env é de
+                 desenvolvimento, não o de produção.
+--permitir-host  libera pontualmente UM host fora da allowlist local (ex.: um
+                 projeto Supabase de desenvolvimento/demonstração, sem dados
+                 reais). Precisa bater exatamente com o host de DATABASE_URL —
+                 não existe um "--force" genérico. Use com cuidado: o seed
+                 pode gerar milhares de registros fictícios no banco de
+                 destino, e nada garante que esse host continuará sendo só de
+                 desenvolvimento no futuro.
 
 O script recusa rodar contra qualquer banco cujo host não seja localhost,
-127.0.0.1 ou "db" (serviço do docker-compose) — nunca roda contra produção.
+127.0.0.1 ou "db" (serviço do docker-compose) — nunca roda contra produção,
+a menos que --permitir-host seja usado conscientemente.
 """
 
 import argparse
@@ -37,10 +46,18 @@ def main() -> None:
     parser.add_argument(
         "--com-uploads", action="store_true", help="habilita upload real de fotos fictícias"
     )
+    parser.add_argument(
+        "--permitir-host",
+        metavar="HOST",
+        default=None,
+        help="libera pontualmente um host fora da allowlist local (deve bater exatamente)",
+    )
     args = parser.parse_args()
 
     try:
-        garantir_ambiente_seguro(confirmar_automaticamente=args.yes)
+        garantir_ambiente_seguro(
+            confirmar_automaticamente=args.yes, host_extra_permitido=args.permitir_host
+        )
     except AmbienteInseguroError as exc:
         print(f"\nAbortando: {exc}\n", file=sys.stderr)
         sys.exit(1)
