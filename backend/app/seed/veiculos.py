@@ -10,9 +10,8 @@ from app.models.veiculo import (
     STATUS_SINISTRADO,
     Veiculo,
 )
-from app.schemas.veiculo import VeiculoCreate, VeiculoUpdate
+from app.schemas.veiculo import VeiculoCreate
 from app.seed.fake import escolher, fake, gerar_chassi, gerar_placa, gerar_renavam, unico
-from app.services import veiculo_service
 
 # (marca, [modelos], categoria) — catálogo pequeno e realista de frota de locadora.
 _CATALOGO = [
@@ -103,14 +102,21 @@ def criar_veiculos(db: Session, quantidade: int) -> tuple[list[Veiculo], dict]:
     """Retorna (veiculos, status_especiais) — o segundo é um dict veiculo_id -> status
     para os veículos cujo status não deve ser derivado de contrato (em_manutencao,
     sinistrado, em_limpeza, inativo), usado pela fase de contratos para reaplicar
-    esse status caso o histórico de locações o tenha sobrescrito."""
+    esse status caso o histórico de locações o tenha sobrescrito.
+
+    Insere em lote (bypassa `veiculo_service.criar`/`atualizar`, que só fazem
+    insert/setattr simples sem efeito colateral em outra tabela — ver
+    docs/10-SEED-DESENVOLVIMENTO.md)."""
     hoje = date.today()
     usados: dict[str, set[str]] = {"placa": set(), "chassi": set(), "renavam": set()}
     veiculos: list[Veiculo] = []
 
     for _ in range(quantidade):
         payload = _gerar_veiculo_create(hoje, usados)
-        veiculos.append(veiculo_service.criar(db, payload))
+        veiculos.append(Veiculo(**payload.model_dump()))
+
+    db.add_all(veiculos)
+    db.flush()  # popula veiculo.id (default client-side, só existe após o flush)
 
     candidatos = list(veiculos)
     fake.random.shuffle(candidatos)
@@ -118,8 +124,10 @@ def criar_veiculos(db: Session, quantidade: int) -> tuple[list[Veiculo], dict]:
     for veiculo, status in zip(
         candidatos, _status_diretamente_atribuiveis(quantidade), strict=False
     ):
-        veiculo_service.atualizar(db, veiculo.id, VeiculoUpdate(status=status))
+        veiculo.status = status
         status_especiais[veiculo.id] = status
+
+    db.commit()
 
     print(f"  veiculos: {len(veiculos)} criados ({len(status_especiais)} com status especial)")
     return veiculos, status_especiais

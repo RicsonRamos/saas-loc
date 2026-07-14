@@ -12,7 +12,6 @@ from app.models.cliente import (
 )
 from app.schemas.cliente import ClienteCreate
 from app.seed.fake import escolher, fake, gerar_documento, unico
-from app.services import cliente_service
 
 # Maioria ativo, mas com variedade suficiente para os cenários pedidos
 # (cliente bloqueado, inadimplente etc. aparecerem nos filtros/telas).
@@ -38,6 +37,10 @@ def _data_cnh_vencimento(hoje: date) -> date | None:
 
 
 def criar_clientes(db: Session, quantidade: int) -> list[Cliente]:
+    """Insere os clientes em lote (bypassa `cliente_service.criar`, que só faz um
+    insert simples sem efeito colateral em outra tabela — ver
+    docs/10-SEED-DESENVOLVIMENTO.md para o racional de evitar milhares de round-trips
+    individuais contra bancos remotos)."""
     hoje = date.today()
     usados_documento: set[str] = set()
     clientes: list[Cliente] = []
@@ -66,10 +69,11 @@ def criar_clientes(db: Session, quantidade: int) -> list[Cliente]:
             forma_pagamento_preferida=escolher(["pix", "cartao", "boleto", "dinheiro"]),
             caucao_padrao=fake.random_int(200, 2000),
         )
-        cliente = cliente_service.criar(db, payload)
+        cliente = Cliente(**payload.model_dump())
         cliente.status = escolher(_DISTRIBUICAO_STATUS)
         clientes.append(cliente)
 
+    db.add_all(clientes)
     db.commit()
     print(f"  clientes: {len(clientes)} criados")
     return clientes

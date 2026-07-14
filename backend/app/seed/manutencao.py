@@ -2,12 +2,12 @@ from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.models.plano_manutencao import TIPOS_PLANO_MANUTENCAO_VALIDOS
+from app.models.manutencao import Manutencao
+from app.models.plano_manutencao import TIPOS_PLANO_MANUTENCAO_VALIDOS, PlanoManutencao
 from app.models.veiculo import Veiculo
 from app.schemas.manutencao import ManutencaoCreate
 from app.schemas.plano_manutencao import PlanoManutencaoCreate
 from app.seed.fake import escolher, fake
-from app.services import manutencao_service, plano_manutencao_service
 
 _OFICINAS = ["Oficina Central", "Auto Center Norte", "Mecânica São José", "Speed Motors"]
 
@@ -26,8 +26,11 @@ _INTERVALOS_POR_TIPO: dict[str, tuple[int | None, int | None]] = {
 
 
 def criar_manutencoes(db: Session, veiculos: list[Veiculo]) -> int:
+    """Insere as manutenções em lote (bypassa `manutencao_service.registrar`, que só
+    faz insert + efeito colateral em `veiculo.km_atual`/`status` — replicado aqui
+    direto nos objetos `Veiculo` já carregados na sessão, sem round trip extra)."""
     hoje = datetime.now(UTC).date()
-    total = 0
+    manutencoes: list[Manutencao] = []
 
     for veiculo in veiculos:
         n = escolher([0, 1, 1, 1, 2])
@@ -48,26 +51,31 @@ def criar_manutencoes(db: Session, veiculos: list[Veiculo]) -> int:
                 proxima_km = veiculo.km_atual + fake.random_int(500, 8000)
                 proxima_data = hoje + timedelta(days=fake.random_int(10, 200))
 
-            manutencao_service.registrar(
-                db,
-                ManutencaoCreate(
-                    veiculo_id=veiculo.id,
-                    tipo=tipo,
-                    data=data,
-                    km=km_na_epoca,
-                    custo=fake.random_int(80, 2500),
-                    oficina=escolher(_OFICINAS),
-                    descricao=escolher(
-                        [None, "Revisão de rotina", "Troca de peça desgastada", "Reparo pós-uso"]
-                    ),
-                    proxima_manutencao_km=proxima_km,
-                    proxima_manutencao_data=proxima_data,
+            payload = ManutencaoCreate(
+                veiculo_id=veiculo.id,
+                tipo=tipo,
+                data=data,
+                km=km_na_epoca,
+                custo=fake.random_int(80, 2500),
+                oficina=escolher(_OFICINAS),
+                descricao=escolher(
+                    [None, "Revisão de rotina", "Troca de peça desgastada", "Reparo pós-uso"]
                 ),
+                proxima_manutencao_km=proxima_km,
+                proxima_manutencao_data=proxima_data,
             )
-            total += 1
+            manutencoes.append(Manutencao(**payload.model_dump(exclude={"em_andamento"})))
 
-    print(f"  manutencoes: {total} criadas")
-    return total
+            # Mesma condição de manutencao_service.registrar: km_na_epoca nunca
+            # ultrapassa veiculo.km_atual pela fórmula acima, mas mantém a checagem
+            # para ficar fiel ao efeito colateral do service caso isso mude.
+            if payload.km > veiculo.km_atual:
+                veiculo.km_atual = payload.km
+
+    db.add_all(manutencoes)
+    db.commit()
+    print(f"  manutencoes: {len(manutencoes)} criadas")
+    return len(manutencoes)
 
 
 def _ultima_execucao_para_cenario(
@@ -94,8 +102,10 @@ def _ultima_execucao_para_cenario(
 
 
 def criar_planos_manutencao(db: Session, veiculos: list[Veiculo]) -> int:
+    """Insere os planos em lote (bypassa `plano_manutencao_service.criar`, que só faz
+    insert simples sem efeito colateral em outra tabela)."""
     hoje = datetime.now(UTC).date()
-    total = 0
+    planos: list[PlanoManutencao] = []
 
     for veiculo in veiculos:
         if fake.random.random() < 0.4:
@@ -111,18 +121,17 @@ def criar_planos_manutencao(db: Session, veiculos: list[Veiculo]) -> int:
             ultima_km, ultima_data = _ultima_execucao_para_cenario(
                 veiculo.km_atual, hoje, intervalo_km, intervalo_dias, cenario
             )
-            plano_manutencao_service.criar(
-                db,
-                PlanoManutencaoCreate(
-                    veiculo_id=veiculo.id,
-                    tipo=tipo,
-                    intervalo_km=intervalo_km,
-                    intervalo_dias=intervalo_dias,
-                    ultima_execucao_km=ultima_km,
-                    ultima_execucao_data=ultima_data,
-                ),
+            payload = PlanoManutencaoCreate(
+                veiculo_id=veiculo.id,
+                tipo=tipo,
+                intervalo_km=intervalo_km,
+                intervalo_dias=intervalo_dias,
+                ultima_execucao_km=ultima_km,
+                ultima_execucao_data=ultima_data,
             )
-            total += 1
+            planos.append(PlanoManutencao(**payload.model_dump()))
 
-    print(f"  planos_manutencao: {total} criados")
-    return total
+    db.add_all(planos)
+    db.commit()
+    print(f"  planos_manutencao: {len(planos)} criados")
+    return len(planos)
