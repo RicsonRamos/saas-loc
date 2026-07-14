@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
+import { History, Pencil, Trash2, Wrench } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -20,6 +21,16 @@ import { STATUS_VEICULO_OPCOES, StatusVeiculoBadge } from "./StatusVeiculoBadge"
 import type { Veiculo } from "./types";
 
 const columnHelper = createColumnHelper<Veiculo>();
+
+const BOTAO_ACAO_BASE =
+  "inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors";
+
+const CORES_ACAO = {
+  slate: "border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+  blue: "border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-800",
+  amber: "border-amber-200 text-amber-600 hover:bg-amber-50 hover:text-amber-800",
+  red: "border-red-200 text-red-600 hover:bg-red-50 hover:text-red-800",
+} as const;
 
 // licenciamento_vencido/seguro_vencido são calculados automaticamente pelo backend
 // (ver veiculo_service.calcular_status_efetivo) e não devem ser escolhidos manualmente.
@@ -257,31 +268,45 @@ export function VeiculosPage() {
       cell: (info: { row: { original: Veiculo } }) => {
         const veiculo = info.row.original;
         return (
-          <div className="flex flex-wrap gap-2">
-            <Link className="text-xs text-slate-700 underline" to={`/frota/${veiculo.id}`}>
-              Histórico
+          <div className="flex flex-wrap gap-1.5">
+            <Link
+              className={`${BOTAO_ACAO_BASE} ${CORES_ACAO.slate}`}
+              to={`/frota/${veiculo.id}`}
+              title="Histórico"
+              aria-label="Histórico"
+            >
+              <History className="h-3.5 w-3.5" />
             </Link>
             {podeEditar && (
               <>
                 <button
-                  className="text-xs text-blue-700 underline"
+                  type="button"
+                  className={`${BOTAO_ACAO_BASE} ${CORES_ACAO.blue}`}
                   onClick={() => abrirEdicao(veiculo)}
+                  title="Editar"
+                  aria-label="Editar"
                 >
-                  Editar
+                  <Pencil className="h-3.5 w-3.5" />
                 </button>
                 {veiculo.status !== "em_manutencao" && (
                   <button
-                    className="text-xs text-amber-700 underline"
+                    type="button"
+                    className={`${BOTAO_ACAO_BASE} ${CORES_ACAO.amber}`}
                     onClick={() => enviarParaManutencao(veiculo)}
+                    title="Enviar p/ manutenção"
+                    aria-label="Enviar para manutenção"
                   >
-                    Enviar p/ manutenção
+                    <Wrench className="h-3.5 w-3.5" />
                   </button>
                 )}
                 <button
-                  className="text-xs text-red-700 underline"
+                  type="button"
+                  className={`${BOTAO_ACAO_BASE} ${CORES_ACAO.red}`}
                   onClick={() => excluir(veiculo)}
+                  title="Excluir"
+                  aria-label="Excluir"
                 >
-                  Excluir
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </>
             )}

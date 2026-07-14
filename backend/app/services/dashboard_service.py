@@ -1,23 +1,33 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import extract, func, select
 from sqlalchemy.orm import Session
 
 from app.models.contrato import STATUS_ATIVO, Contrato
-from app.models.financeiro import STATUS_PAGAMENTO_PAGO, Despesa, Pagamento
+from app.models.financeiro import (
+    STATUS_PAGAMENTO_PAGO,
+    STATUS_PAGAMENTO_PENDENTE,
+    Despesa,
+    Pagamento,
+)
 from app.models.manutencao import Manutencao
 from app.models.multa import STATUS_MULTA_PENDENTE, Multa
 from app.models.plano_manutencao import PlanoManutencao
-from app.models.veiculo import Veiculo
+from app.models.veiculo import STATUS_ALUGADO, Veiculo
 from app.schemas.dashboard import (
     AlertaOut,
+    DashboardKpisOut,
     DashboardResumoOut,
+    FinanceiroMensalOut,
     FinanceiroMesOut,
+    PagamentosResumoOut,
     VencimentosResumoOut,
 )
 from app.services import contrato_service, plano_manutencao_service
 from app.services.veiculo_service import calcular_status_efetivo
+
+MESES_HISTORICO_FINANCEIRO = 6
 
 ROTULOS_TIPO_PLANO_MANUTENCAO: dict[str, str] = {
     "troca_oleo": "Troca de óleo",
@@ -76,6 +86,120 @@ def _financeiro_do_mes(db: Session, hoje: datetime) -> FinanceiroMesOut:
         )
     ) or Decimal("0")
     return FinanceiroMesOut(receita=receita, despesas=despesas, lucro=receita - despesas)
+
+
+def _historico_financeiro(
+    db: Session, hoje: date, meses: int = MESES_HISTORICO_FINANCEIRO
+) -> list[FinanceiroMensalOut]:
+    """Agrega receita/despesa por mês nos últimos `meses` meses (incluindo o atual).
+
+    Duas queries agrupadas por ano/mês (uma para pagamentos pagos, outra para despesas)
+    em vez de uma por mês — evita `meses` round-trips redundantes.
+    """
+    primeiro_mes = (hoje.replace(day=1) - timedelta(days=30 * (meses - 1))).replace(day=1)
+
+    receitas_por_mes: dict[tuple[int, int], Decimal] = {}
+    linhas_receita = db.execute(
+        select(
+            extract("year", Pagamento.data).label("ano"),
+            extract("month", Pagamento.data).label("mes"),
+            func.coalesce(func.sum(Pagamento.valor), 0).label("total"),
+        )
+        .where(Pagamento.status == STATUS_PAGAMENTO_PAGO, Pagamento.data >= primeiro_mes)
+        .group_by("ano", "mes")
+    ).all()
+    for ano, mes, total in linhas_receita:
+        receitas_por_mes[(int(ano), int(mes))] = Decimal(total)
+
+    despesas_por_mes: dict[tuple[int, int], Decimal] = {}
+    linhas_despesa = db.execute(
+        select(
+            extract("year", Despesa.data).label("ano"),
+            extract("month", Despesa.data).label("mes"),
+            func.coalesce(func.sum(Despesa.valor), 0).label("total"),
+        )
+        .where(Despesa.data >= primeiro_mes)
+        .group_by("ano", "mes")
+    ).all()
+    for ano, mes, total in linhas_despesa:
+        despesas_por_mes[(int(ano), int(mes))] = Decimal(total)
+
+    historico: list[FinanceiroMensalOut] = []
+    cursor = primeiro_mes
+    for _ in range(meses):
+        chave = (cursor.year, cursor.month)
+        receita = receitas_por_mes.get(chave, Decimal("0"))
+        despesa = despesas_por_mes.get(chave, Decimal("0"))
+        historico.append(
+            FinanceiroMensalOut(
+                mes=f"{cursor.year:04d}-{cursor.month:02d}",
+                receita=receita,
+                despesas=despesa,
+                lucro=receita - despesa,
+            )
+        )
+        cursor = (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
+
+    return historico
+
+
+def _contratos_ativos_count(db: Session) -> int:
+    return db.scalar(select(func.count()).where(Contrato.status == STATUS_ATIVO)) or 0
+
+
+def _taxa_ocupacao(veiculos_por_status: dict[str, int], total_veiculos: int) -> float:
+    if total_veiculos == 0:
+        return 0.0
+    alugados = veiculos_por_status.get(STATUS_ALUGADO, 0)
+    return round(alugados / total_veiculos * 100, 1)
+
+
+def _pagamentos_pendentes_e_atrasados(
+    db: Session, hoje: date
+) -> tuple[PagamentosResumoOut, PagamentosResumoOut]:
+    pendentes = db.execute(
+        select(func.count(), func.coalesce(func.sum(Pagamento.valor), 0)).where(
+            Pagamento.status == STATUS_PAGAMENTO_PENDENTE
+        )
+    ).one()
+    atrasados = db.execute(
+        select(func.count(), func.coalesce(func.sum(Pagamento.valor), 0)).where(
+            Pagamento.status == STATUS_PAGAMENTO_PENDENTE,
+            func.date(Pagamento.data) < hoje,
+        )
+    ).one()
+    return (
+        PagamentosResumoOut(quantidade=pendentes[0], valor=Decimal(pendentes[1])),
+        PagamentosResumoOut(quantidade=atrasados[0], valor=Decimal(atrasados[1])),
+    )
+
+
+def _montar_kpis(
+    db: Session,
+    hoje: date,
+    veiculos_por_status: dict[str, int],
+    total_veiculos: int,
+    financeiro_mes: FinanceiroMesOut | None,
+) -> DashboardKpisOut:
+    contratos_ativos = _contratos_ativos_count(db)
+    pendentes, atrasados = _pagamentos_pendentes_e_atrasados(db, hoje)
+
+    ticket_medio = None
+    receita_por_veiculo = None
+    if financeiro_mes is not None:
+        if contratos_ativos > 0:
+            ticket_medio = financeiro_mes.receita / contratos_ativos
+        if total_veiculos > 0:
+            receita_por_veiculo = financeiro_mes.receita / total_veiculos
+
+    return DashboardKpisOut(
+        contratos_ativos=contratos_ativos,
+        taxa_ocupacao=_taxa_ocupacao(veiculos_por_status, total_veiculos),
+        ticket_medio=ticket_medio,
+        receita_por_veiculo=receita_por_veiculo,
+        pagamentos_pendentes=pendentes,
+        pagamentos_atrasados=atrasados,
+    )
 
 
 def _alertas_documentos(veiculos: list[Veiculo], hoje) -> list[AlertaOut]:
@@ -293,6 +417,7 @@ def resumo(db: Session, incluir_financeiro: bool) -> DashboardResumoOut:
     agora = datetime.now(UTC)
     hoje = agora.date()
     veiculos = _veiculos_ativos(db)
+    veiculos_por_status = _contar_por_status(veiculos)
 
     alertas = [
         *_alertas_documentos(veiculos, hoje),
@@ -303,9 +428,13 @@ def resumo(db: Session, incluir_financeiro: bool) -> DashboardResumoOut:
         *_alertas_multas_pendentes(db, veiculos),
     ]
 
+    financeiro_mes = _financeiro_do_mes(db, agora) if incluir_financeiro else None
+
     return DashboardResumoOut(
-        veiculos_por_status=_contar_por_status(veiculos),
+        veiculos_por_status=veiculos_por_status,
         vencimentos=_contar_vencimentos(veiculos, hoje),
-        financeiro_mes=_financeiro_do_mes(db, agora) if incluir_financeiro else None,
+        financeiro_mes=financeiro_mes,
+        financeiro_historico=_historico_financeiro(db, hoje) if incluir_financeiro else None,
+        kpis=_montar_kpis(db, hoje, veiculos_por_status, len(veiculos), financeiro_mes),
         alertas=alertas,
     )

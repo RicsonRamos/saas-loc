@@ -9,6 +9,27 @@ export interface FinanceiroMes {
   lucro: string;
 }
 
+export interface FinanceiroMensal {
+  mes: string;
+  receita: string;
+  despesas: string;
+  lucro: string;
+}
+
+export interface PagamentosResumo {
+  quantidade: number;
+  valor: string;
+}
+
+export interface DashboardKpis {
+  contratos_ativos: number;
+  taxa_ocupacao: number;
+  ticket_medio: string | null;
+  receita_por_veiculo: string | null;
+  pagamentos_pendentes: PagamentosResumo;
+  pagamentos_atrasados: PagamentosResumo;
+}
+
 export type PrioridadeAlerta = "normal" | "atencao" | "critico";
 
 export interface Alerta {
@@ -23,5 +44,7 @@ export interface DashboardResumo {
   veiculos_por_status: Record<string, number>;
   vencimentos: VencimentosResumo;
   financeiro_mes: FinanceiroMes | null;
+  financeiro_historico: FinanceiroMensal[] | null;
+  kpis: DashboardKpis;
   alertas: Alerta[];
 }
